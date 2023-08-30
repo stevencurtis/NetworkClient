@@ -6,11 +6,9 @@ final class NetworkClientTests: XCTestCase {
     private let request = MockRequest()
 
     override func setUp() {
-        
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockURLProtocol.self]
         let urlSession = URLSession(configuration: configuration)
-        
         networkClient = MainNetworkClient(urlSession: urlSession)
     }
     
@@ -55,5 +53,30 @@ final class NetworkClientTests: XCTestCase {
             }
         }
         wait(for: [expectation], timeout: 1)
+    }
+    
+    func testNetworkClientAsyncSuccess() async {
+        let mockJSONData = "{\"message\":\"testdata\"}".data(using: .utf8)!
+        let expected: MockDto = .init(message: "testdata")
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://endpoint/path/")
+            return (HTTPURLResponse(), mockJSONData)
+        }
+        
+        let data = try? await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+        XCTAssertEqual(data, expected)
+    }
+    
+    func testNetworkClientAsyncFailure() async {
+        let mockJSONData = "".data(using: .utf8)!
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.url?.absoluteString, "https://endpoint/path/")
+            return (HTTPURLResponse(), mockJSONData)
+        }
+        do {
+            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+        } catch let error {
+            XCTAssertNotNil(error)
+        }
     }
 }

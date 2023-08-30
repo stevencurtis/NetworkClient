@@ -15,7 +15,6 @@ final class MockURLProtocol: URLProtocol {
     }
     
     override func startLoading() {
-        
         guard let handler = MockURLProtocol.requestHandler else {
             XCTFail("Received unexpected request with no handler set")
             return
@@ -32,4 +31,3 @@ final class MockURLProtocol: URLProtocol {
     
     override func stopLoading() { }
 }
-
