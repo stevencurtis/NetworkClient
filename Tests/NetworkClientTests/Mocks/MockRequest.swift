@@ -6,7 +6,12 @@ import Foundation
 struct MockRequest: APIRequest {
     func parseResponse(data: Data) throws -> MockDto {
         let decoder = JSONDecoder()
-        return try decoder.decode(MockDto.self, from: data)
+        do {
+            let dto = try decoder.decode(MockDto.self, from: data)
+            return dto
+        } catch let error {
+            throw ApiError.parseResponse(errorMessage: error.localizedDescription)
+        }
     }
 }
 

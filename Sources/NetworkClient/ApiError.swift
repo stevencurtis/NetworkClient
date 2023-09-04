@@ -13,21 +13,24 @@ public enum ApiError: Equatable, Error {
             return error
         case .noData:
             return "No data"
-        case .parseResponse:
-            return "Could not parse response"
+        case .parseResponse(let error):
+            return error
         case .httpError(let error):
             return error.localizedDescription
         case .invalidResponse:
             return "Invalid response"
+        case .unknown:
+            return "Unknown Error"
         }
     }
     case generic
     case network(errorMessage: String)
     case noData
-    case parseResponse
+    case parseResponse(errorMessage: String)
     case request
     case httpError(HTTPError)
     case invalidResponse(Data?, URLResponse?)
+    case unknown
 }
 
 public enum HTTPError: Error {

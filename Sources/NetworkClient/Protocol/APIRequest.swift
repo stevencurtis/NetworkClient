@@ -14,7 +14,9 @@ public protocol APIRequest {
 
 extension APIRequest {
     public func make(api: URLGenerator, method: HTTPMethod) throws -> URLRequest {
-        guard let url = api.url else { throw ApiError.request }
+        guard let url = api.url else {
+            throw ApiError.request
+        }
         var request = URLRequest(
             url: url,
             cachePolicy: .useProtocolCachePolicy,

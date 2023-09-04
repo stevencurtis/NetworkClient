@@ -9,6 +9,18 @@ public class MainNetworkClient: NetworkClient {
         self.urlSession = urlSession
     }
     
+    public func fetch<T: APIRequest>(
+        api: URLGenerator,
+        method: HTTPMethod,
+        request: T
+    ) async throws -> T.ResponseDataType {
+        let urlRequest = try createURLRequest(api: api, method: method, request: request)
+        let (data, response) = try await urlSession.data(for: urlRequest)
+        let httpResponse = try self.handleResponse(data, response)
+        try handleStatusCode(statusCode: httpResponse.statusCode)
+        return try parseData(data, for: request)
+    }
+
     @discardableResult
     public func request<T: APIRequest>(
         api: URLGenerator,
@@ -16,73 +28,71 @@ public class MainNetworkClient: NetworkClient {
         request: T,
         completionHandler: @escaping (ApiResponse<T.ResponseDataType>) -> Void
     ) -> URLSessionTask? {
-        guard let urlRequest = try? request.make(api: api, method: method) else {
-            completionHandler(.failure(.request))
+        do {
+            let urlRequest = try createURLRequest(api: api, method: method, request: request)
+            let task = urlSession.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    completionHandler(.failure(.network(errorMessage: error.localizedDescription)))
+                    return
+                }
+                guard let validData = data else {
+                    completionHandler(.failure(.noData))
+                    return
+                }
+                do {
+                    let httpResponse = try self.handleResponse(validData, response)
+                    try self.handleStatusCode(statusCode: httpResponse.statusCode)
+                    let parsedResponse = try self.parseData(validData, for: request)
+                    completionHandler(.success(parsedResponse))
+                } catch let apiError as ApiError {
+                    completionHandler(.failure(apiError))
+                } catch {
+                    completionHandler(.failure(.unknown))
+                }
+            }
+            task.resume()
+            return task
+        } catch let apiError as ApiError {
+            completionHandler(.failure(apiError))
+            return nil
+        } catch {
+            completionHandler(.failure(.unknown))
             return nil
         }
-        let task = urlSession.dataTask(with: urlRequest) { data, response, error in
-            if let error = error {
-                completionHandler(.failure(
-                    .network(errorMessage: error.localizedDescription))
-                )
-            }
-            
-            guard let data = data else { return completionHandler(.failure(.noData)) }
-            do {
-                let parsedResponse = try request.parseResponse(data: data)
-                completionHandler(.success(parsedResponse))
-            } catch {
-                completionHandler(.failure(.parseResponse))
-            }
-        }
-        task.resume()
-        return task
     }
     
-    public func fetch<T: APIRequest>(
-        api: URLGenerator,
-        method: HTTPMethod,
-        request: T
-    ) async throws -> T.ResponseDataType {
-        let fetchTask = Task {
-            let urlRequest: URLRequest
-            do {
-                urlRequest = try request.make(api: api, method: method)
-            } catch {
-                throw ApiError.network(errorMessage: error.localizedDescription)
-            }
-            let (data, httpResponse) = try await urlSession.data(for: urlRequest)
-            guard let httpResponse = httpResponse as? HTTPURLResponse else {
-                throw ApiError.invalidResponse(data, httpResponse)
-            }
-            switch self.handleStatusCode(statusCode: httpResponse.statusCode) {
-            case .success:
-                return data
-            case .failure(let error):
-                throw error
-            }
+    private func createURLRequest<T: APIRequest>(api: URLGenerator, method: HTTPMethod, request: T) throws -> URLRequest {
+        let urlRequest = try request.make(api: api, method: method)
+        return urlRequest
+    }
+
+    private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ApiError.invalidResponse(data, response)
         }
-        
-        let parsedResponse = try request.parseResponse(data: try await fetchTask.value)
-        return parsedResponse
+        return httpResponse
+    }
+
+    private func parseData<T: APIRequest>(_ data: Data, for request: T) throws -> T.ResponseDataType {
+        try request.parseResponse(data: data)
     }
     
-    private func handleStatusCode(statusCode: Int) -> Result<Void, ApiError> {
+    private func handleStatusCode(statusCode: Int) throws {
         switch statusCode {
         case 200 ..< 300:
-            return .success(())
+            break
         case 400:
-            return .failure(.httpError(.badRequest))
+            throw ApiError.httpError(.badRequest)
         case 401:
-            return .failure(.httpError(.unauthorized))
+            throw ApiError.httpError(.unauthorized)
         case 403:
-            return .failure(.httpError(.forbidden))
+            throw ApiError.httpError(.forbidden)
         case 404:
-            return .failure(.httpError(.notFound))
+            throw ApiError.httpError(.notFound)
         case 500:
-            return .failure(.httpError(.serverError))
+            throw ApiError.httpError(.serverError)
         default:
-            return .failure(.httpError(.unknown))
+            throw ApiError.httpError(.unknown)
         }
     }
 }
