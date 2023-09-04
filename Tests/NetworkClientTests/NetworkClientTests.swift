@@ -15,6 +15,7 @@ final class NetworkClientTests: XCTestCase {
     
     override func tearDown() {
         networkClient = nil
+        MockURLProtocol.requestHandler = nil
         super.tearDown()
     }
     
