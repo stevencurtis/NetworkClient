@@ -2,7 +2,7 @@
 
 import Foundation
 
-public class MainNetworkClient: NetworkClient {
+public final class MainNetworkClient: NetworkClient {
     private let urlSession: URLSession
     
     public init(urlSession: URLSession = .shared) {
@@ -20,43 +20,54 @@ public class MainNetworkClient: NetworkClient {
         try handleStatusCode(statusCode: httpResponse.statusCode)
         return try parseData(data, for: request)
     }
-
+    
     @discardableResult
-    public func request<T: APIRequest>(
+    public func fetch<T: APIRequest>(
         api: URLGenerator,
         method: HTTPMethod,
         request: T,
+        completionQueue: DispatchQueue,
         completionHandler: @escaping (ApiResponse<T.ResponseDataType>) -> Void
     ) -> URLSessionTask? {
         do {
             let urlRequest = try createURLRequest(api: api, method: method, request: request)
             let task = urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
-                    completionHandler(.failure(.network(errorMessage: error.localizedDescription)))
+                    self.completeOnQueue(
+                        completionQueue,
+                        with: .failure(.network(errorMessage: error.localizedDescription)),
+                        completionHandler: completionHandler
+                    )
                     return
                 }
                 guard let validData = data else {
-                    completionHandler(.failure(.noData))
+                    self.completeOnQueue(
+                        completionQueue,
+                        with: .failure(.noData),
+                        completionHandler: completionHandler
+                    )
                     return
                 }
                 do {
                     let httpResponse = try self.handleResponse(validData, response)
                     try self.handleStatusCode(statusCode: httpResponse.statusCode)
                     let parsedResponse = try self.parseData(validData, for: request)
-                    completionHandler(.success(parsedResponse))
+                    self.completeOnQueue(completionQueue, with: .success(parsedResponse), completionHandler: completionHandler)
                 } catch let apiError as ApiError {
-                    completionHandler(.failure(apiError))
+                    self.completeOnQueue(completionQueue, with: .failure(apiError), completionHandler: completionHandler)
                 } catch {
-                    completionHandler(.failure(.unknown))
+                    self.completeOnQueue(completionQueue, with: .failure(.unknown), completionHandler: completionHandler)
                 }
             }
             task.resume()
             return task
         } catch let apiError as ApiError {
-            completionHandler(.failure(apiError))
+            completionQueue.async {
+                self.completeOnQueue(completionQueue, with: .failure(apiError), completionHandler: completionHandler)
+            }
             return nil
         } catch {
-            completionHandler(.failure(.unknown))
+            completeOnQueue(completionQueue, with: .failure(.unknown), completionHandler: completionHandler)
             return nil
         }
     }
@@ -65,14 +76,14 @@ public class MainNetworkClient: NetworkClient {
         let urlRequest = try request.make(api: api, method: method)
         return urlRequest
     }
-
+    
     private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ApiError.invalidResponse(data, response)
         }
         return httpResponse
     }
-
+    
     private func parseData<T: APIRequest>(_ data: Data, for request: T) throws -> T.ResponseDataType {
         try request.parseResponse(data: data)
     }
@@ -93,6 +104,16 @@ public class MainNetworkClient: NetworkClient {
             throw ApiError.httpError(.serverError)
         default:
             throw ApiError.httpError(.unknown)
+        }
+    }
+    
+    private func completeOnQueue<T>(
+        _ queue: DispatchQueue,
+        with response: ApiResponse<T>,
+        completionHandler: @escaping (ApiResponse<T>) -> Void
+    ) {
+        queue.async {
+            completionHandler(response)
         }
     }
 }

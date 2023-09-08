@@ -5,8 +5,6 @@ import Foundation
 public enum ApiError: Equatable, Error {
     var localizedDescription: String {
         switch self {
-        case .generic:
-            return "error"
         case .request:
             return "Could not process request"
         case .network(errorMessage: let error):
@@ -23,7 +21,6 @@ public enum ApiError: Equatable, Error {
             return "Unknown Error"
         }
     }
-    case generic
     case network(errorMessage: String)
     case noData
     case parseResponse(errorMessage: String)
@@ -41,7 +38,7 @@ public enum HTTPError: Error {
     case serverError // 500
     case unknown // for other status codes
 
-    var description: String {
+    var localizedDescription: String {
         switch self {
         case .badRequest:
             return "Bad Request"
