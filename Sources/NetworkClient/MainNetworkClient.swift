@@ -30,7 +30,11 @@ public final class MainNetworkClient: NetworkClient {
         completionHandler: @escaping (ApiResponse<T.ResponseDataType>) -> Void
     ) -> URLSessionTask? {
         do {
-            let urlRequest = try createURLRequest(api: api, method: method, request: request)
+            let urlRequest = try createURLRequest(
+                api: api,
+                method: method,
+                request: request
+            )
             let task = urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     self.completeOnQueue(
@@ -40,6 +44,16 @@ public final class MainNetworkClient: NetworkClient {
                     )
                     return
                 }
+                
+                if (response as? HTTPURLResponse)?.statusCode == 204 {
+                    self.completeOnQueue(
+                        completionQueue,
+                        with: .success(nil),
+                        completionHandler: completionHandler
+                    )
+                    return
+                }
+                
                 guard let validData = data else {
                     self.completeOnQueue(
                         completionQueue,
@@ -52,22 +66,42 @@ public final class MainNetworkClient: NetworkClient {
                     let httpResponse = try self.handleResponse(validData, response)
                     try self.handleStatusCode(statusCode: httpResponse.statusCode)
                     let parsedResponse = try self.parseData(validData, for: request)
-                    self.completeOnQueue(completionQueue, with: .success(parsedResponse), completionHandler: completionHandler)
+                    self.completeOnQueue(
+                        completionQueue,
+                        with: .success(parsedResponse),
+                        completionHandler: completionHandler
+                    )
                 } catch let apiError as ApiError {
-                    self.completeOnQueue(completionQueue, with: .failure(apiError), completionHandler: completionHandler)
+                    self.completeOnQueue(
+                        completionQueue,
+                        with: .failure(apiError),
+                        completionHandler: completionHandler
+                    )
                 } catch {
-                    self.completeOnQueue(completionQueue, with: .failure(.unknown), completionHandler: completionHandler)
+                    self.completeOnQueue(
+                        completionQueue,
+                        with: .failure(.unknown),
+                        completionHandler: completionHandler
+                    )
                 }
             }
             task.resume()
             return task
         } catch let apiError as ApiError {
             completionQueue.async {
-                self.completeOnQueue(completionQueue, with: .failure(apiError), completionHandler: completionHandler)
+                self.completeOnQueue(
+                    completionQueue,
+                    with: .failure(apiError),
+                    completionHandler: completionHandler
+                )
             }
             return nil
         } catch {
-            completeOnQueue(completionQueue, with: .failure(.unknown), completionHandler: completionHandler)
+            completeOnQueue(
+                completionQueue,
+                with: .failure(.unknown),
+                completionHandler: completionHandler
+            )
             return nil
         }
     }

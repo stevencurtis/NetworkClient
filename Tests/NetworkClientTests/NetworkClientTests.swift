@@ -20,16 +20,108 @@ final class NetworkClientTests: XCTestCase {
         super.tearDown()
     }
     
-    func testFetch_successfullyParsesExpectedJSONData() throws {
+    func testFetchGet_successfullyParsesExpectedJSONData() throws {
         let mockJSONData = try XCTUnwrap("{\"message\":\"testdata\"}".data(using: .utf8))
-        MockURLProtocol.requestHandler = { request in
-            XCTAssertEqual(request.url?.absoluteString, "https://endpoint/path/")
-            return (HTTPURLResponse(), mockJSONData)
-        }
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
+        setupMockResponse(statusCode: 200, data: mockJSONData)
+        let expectation = expectation(description: "NetworkClient fetch expectation")
 
-        let expected: MockDto = .init(message: "testdata")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        let expected = MockDto(message: "testdata")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .get(),
+            request: request,
+            completionQueue: queue) { response in
+                switch response {
+                case .success(let list):
+                    XCTAssertEqual(list, expected)
+                case .failure:
+                    XCTFail()
+                }
+                expectation.fulfill()
+            }
+        waitForExpectations(timeout: 1, handler: nil)
+    }
+    
+    func testFetchPost_handlesSuccessResponse() throws {
+        let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
+        setupMockResponse(statusCode: 201, data: mockJSONData)
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+
+        let expected = MockDto(message: "success")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .post(body: ["text":"text"]),
+            request: request,
+            completionQueue: queue
+        ) { response in
+            switch response {
+            case .success(let list):
+                XCTAssertEqual(list, expected)
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1, handler: nil)
+    }
+
+    func testFetchPut_handlesSuccessResponse() throws {
+        let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
+        setupMockResponse(statusCode: 200, data: mockJSONData)
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+
+        let expected = MockDto(message: "success")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .put(),
+            request: request,
+            completionQueue: queue
+        ) { response in
+            switch response {
+            case .success(let list):
+                XCTAssertEqual(list, expected)
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1, handler: nil)
+    }
+
+    func testFetchDelete_handlesSuccessResponse() throws {
+        setupMockResponse(statusCode: 204)
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .delete(),
+            request: request,
+            completionQueue: queue
+        ) { response in
+            switch response {
+            case .success:
+                break
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1, handler: nil)
+    }
+
+    func testFetchPatch_handlesSuccessResponse() throws {
+        let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
+        setupMockResponse(statusCode: 200, data: mockJSONData)
+
+        let expected = MockDto(message: "success")
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .patch(),
+            request: request,
+            completionQueue: queue
+        ) { response in
             switch response {
             case .success(let list):
                 XCTAssertEqual(list, expected)
@@ -41,11 +133,10 @@ final class NetworkClientTests: XCTestCase {
         waitForExpectations(timeout: 1, handler: nil)
     }
     
-    func testFetch_handlesInvalidResponseData() throws {
-        MockURLProtocol.requestHandler = { request in
-            return (HTTPURLResponse(), Data())
-        }
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
+    func testFetchGet_handlesInvalidResponseData() throws {
+        setupMockResponse()
+
+        let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
             switch response {
             case .success:
@@ -58,18 +149,10 @@ final class NetworkClientTests: XCTestCase {
         waitForExpectations(timeout: 1, handler: nil)
     }
 
-    func testFetch_handlesBadRequestError() throws {
-        MockURLProtocol.requestHandler = { request in
-            guard let url = request.url,
-                  let response = HTTPURLResponse(url: url, statusCode: 400, httpVersion: nil, headerFields: [:]) else {
-                XCTFail("Failed to create HTTPURLResponse")
-                return (HTTPURLResponse(), Data())
-            }
-            let mockJSONData = try XCTUnwrap("{\"message\":\"testdata\"}".data(using: .utf8))
-            return (response, mockJSONData)
-        }
+    func testFetchGet_handlesBadRequestError() throws {
+        setupMockResponse(statusCode: 400)
 
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
+        let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
             switch response {
             case .success:
@@ -83,18 +166,16 @@ final class NetworkClientTests: XCTestCase {
 
     }
 
-    func testFetch_handlesUnauthorizedError() throws {
-        MockURLProtocol.requestHandler = { request in
-            guard let url = request.url,
-                  let response = HTTPURLResponse(url: url, statusCode: 401, httpVersion: nil, headerFields: [:]) else {
-                XCTFail("Failed to create HTTPURLResponse")
-                return (HTTPURLResponse(), Data())
-            }
-            return (response, Data())
-        }
+    func testFetchGet_handlesUnauthorizedError() throws {
+        setupMockResponse(statusCode: 401)
 
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .get(),
+            request: request,
+            completionQueue: queue
+        ) { response in
             switch response {
             case .success:
                 XCTFail()
@@ -104,21 +185,18 @@ final class NetworkClientTests: XCTestCase {
             expectation.fulfill()
         }
         waitForExpectations(timeout: 1, handler: nil)
-
     }
 
-    func testFetch_handlesForbiddenError() throws {
-        MockURLProtocol.requestHandler = { request in
-            guard let url = request.url,
-                  let response = HTTPURLResponse(url: url, statusCode: 403, httpVersion: nil, headerFields: [:]) else {
-                XCTFail("Failed to create HTTPURLResponse")
-                return (HTTPURLResponse(), Data())
-            }
-            return (response, Data())
-        }
+    func testFetchGet_handlesForbiddenError() throws {
+        setupMockResponse(statusCode: 403)
 
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .get(),
+            request: request,
+            completionQueue: queue
+        ) { response in
             switch response {
             case .success:
                 XCTFail()
@@ -128,21 +206,18 @@ final class NetworkClientTests: XCTestCase {
             expectation.fulfill()
         }
         waitForExpectations(timeout: 1, handler: nil)
-
     }
 
-    func testFetch_handlesNotFoundError() throws {
-        MockURLProtocol.requestHandler = { request in
-            guard let url = request.url,
-                  let response = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: [:]) else {
-                XCTFail("Failed to create HTTPURLResponse")
-                return (HTTPURLResponse(), Data())
-            }
-            return (response, Data())
-        }
+    func testFetchGet_handlesNotFoundError() throws {
+        setupMockResponse(statusCode: 404)
 
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .get(),
+            request: request,
+            completionQueue: queue
+        ) { response in
             switch response {
             case .success:
                 XCTFail()
@@ -152,21 +227,18 @@ final class NetworkClientTests: XCTestCase {
             expectation.fulfill()
         }
         waitForExpectations(timeout: 1, handler: nil)
-
     }
 
-    func testFetch_handlesServerError() throws {
-        MockURLProtocol.requestHandler = { request in
-            guard let url = request.url,
-                  let response = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: [:]) else {
-                XCTFail("Failed to create HTTPURLResponse")
-                return (HTTPURLResponse(), Data())
-            }
-            return (response, Data())
-        }
+    func testFetchGet_handlesServerError() throws {
+        setupMockResponse(statusCode: 500)
 
-        let expectation = self.expectation(description: "NetworkClient fetch expectation")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .get(),
+            request: request,
+            completionQueue: queue
+        ) { response in
             switch response {
             case .success:
                 XCTFail()
@@ -178,26 +250,66 @@ final class NetworkClientTests: XCTestCase {
         waitForExpectations(timeout: 1, handler: nil)
     }
 
-    func testFetchAsync_successfulDataFetch() async throws {
+    func testFetchGetAsync_successfulDataFetch() async throws {
         let mockJSONData = try XCTUnwrap("{\"message\":\"testdata\"}".data(using: .utf8))
-        let expected: MockDto = .init(message: "testdata")
-        MockURLProtocol.requestHandler = { request in
-            XCTAssertEqual(request.url?.absoluteString, MockApi.endpoint.url?.absoluteString)
-            return (HTTPURLResponse(), mockJSONData)
-        }
+        let expected = MockDto(message: "testdata")
+        setupMockResponse(statusCode: 200, data: mockJSONData)
 
-        let data = try? await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+        let data = try? await networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .get(),
+            request: request
+        )
         XCTAssertEqual(data, expected)
     }
+    
+    func testFetchPostAsync_successfulDataFetch() async throws {
+        let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
+        let expected = MockDto(message: "success")
+        setupMockResponse(statusCode: 200, data: mockJSONData)
 
-    func testFetchAsync_handlesInvalidData() async throws {
-        MockURLProtocol.requestHandler = { request in
-            XCTAssertEqual(request.url?.absoluteString, MockApi.endpoint.url?.absoluteString)
-            let mockJSONData = try XCTUnwrap("{\"notamessage\":\"testdata\"}".data(using: .utf8))
-            return (HTTPURLResponse(), mockJSONData)
-        }
+        let data = try? await networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .post(body: [:]),
+            request: request
+        )
+        XCTAssertEqual(data, expected)
+    }
+    
+    func testFetchPutAsync_successfulDataFetch() async throws {
+        let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
+        let expected = MockDto(message: "success")
+        setupMockResponse(statusCode: 200, data: mockJSONData)
+
+        let data = try? await networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .put(),
+            request: request
+        )
+        XCTAssertEqual(data, expected)
+    }
+    
+    func testFetchDeleteAsync_successfulDataFetch() async throws {
+        setupMockResponse(statusCode: 204)
+
+        let data = try? await networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .delete(),
+            request: request
+        )
+        XCTAssertEqual(data, nil)
+    }
+
+    func testFetchGetAsync_handlesInvalidData() async throws {
+        let mockJSONData = try XCTUnwrap("{\"notamessage\":\"testdata\"}".data(using: .utf8))
+        setupMockResponse(data: mockJSONData)
+
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError = error as? ApiError else {
                 XCTFail()
@@ -207,10 +319,14 @@ final class NetworkClientTests: XCTestCase {
         }
     }
 
-    func testFetchAsync_handlesBadRequestError() async throws {
+    func testFetchGetAsync_handlesBadRequestError() async throws {
         setupMockResponse(statusCode: 400)
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError  = error as? ApiError else {
                 XCTFail()
@@ -220,10 +336,14 @@ final class NetworkClientTests: XCTestCase {
         }
     }
 
-    func testFetchAsync_handlesUnauthorizedError() async throws {
+    func testFetchGetAsync_handlesUnauthorizedError() async throws {
         setupMockResponse(statusCode: 401)
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError  = error as? ApiError else {
                 XCTFail()
@@ -233,10 +353,14 @@ final class NetworkClientTests: XCTestCase {
         }
     }
 
-    func testFetchAsync_handlesForbiddenError() async throws {
+    func testFetchGetAsync_handlesForbiddenError() async throws {
         setupMockResponse(statusCode: 403)
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError  = error as? ApiError else {
                 XCTFail()
@@ -246,10 +370,14 @@ final class NetworkClientTests: XCTestCase {
         }
     }
 
-    func testFetchAsync_handlesNotFoundError() async throws {
+    func testFetchGetAsync_handlesNotFoundError() async throws {
         setupMockResponse(statusCode: 404)
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError  = error as? ApiError else {
                 XCTFail()
@@ -259,10 +387,14 @@ final class NetworkClientTests: XCTestCase {
         }
     }
 
-    func testFetchAsync_handlesServerError() async throws {
+    func testFetchGetAsync_handlesServerError() async throws {
         setupMockResponse(statusCode: 500)
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError  = error as? ApiError else {
                 XCTFail()
@@ -272,10 +404,14 @@ final class NetworkClientTests: XCTestCase {
         }
     }
 
-    func testFetchAsync_handlesUnknownError() async throws {
+    func testFetchGetAsync_handlesUnknownError() async throws {
         setupMockResponse(statusCode: 600)
         do {
-            _ = try await networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request)
+            _ = try await networkClient.fetch(
+                api: MockApi.endpoint,
+                method: .get(),
+                request: request
+            )
         } catch let error {
             guard let apiError  = error as? ApiError else {
                 XCTFail()
@@ -287,14 +423,25 @@ final class NetworkClientTests: XCTestCase {
 }
 
 extension NetworkClientTests {
-    private func setupMockResponse(statusCode: Int, data: Data = Data()) {
+    private func setupMockResponse(statusCode: Int? = nil, data: Data = Data()) {
         MockURLProtocol.requestHandler = { request in
-            guard let url = request.url,
-                  let response = HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: [:]) else {
-                XCTFail("Failed to create HTTPURLResponse")
+            guard let url = request.url else {
+                XCTFail("Request URL is nil")
                 return (HTTPURLResponse(), Data())
             }
-            return (response, data)
+            
+            if let statusCode = statusCode,
+               let response = HTTPURLResponse(
+                url: url,
+                statusCode: statusCode,
+                httpVersion: nil,
+                headerFields: [:]
+               ) {
+                return (response, data)
+            } else {
+                let response = HTTPURLResponse()
+                return (response, data)
+            }
         }
     }
 }

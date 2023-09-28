@@ -3,10 +3,10 @@
 import Foundation
 
 public enum ApiResponse<T> {
-    case success(T)
+    case success(T?)
     case failure(ApiError)
 
-    public var result: Result<T, ApiError> {
+    public var result: Result<T?, ApiError> {
         switch self {
         case let .success(value):
             return .success(value)
