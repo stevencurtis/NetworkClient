@@ -25,13 +25,14 @@ public extension NetworkClient {
         api: URLGenerator,
         method: HTTPMethod,
         request: T = DefaultRequest(),
+        completionQueue: DispatchQueue = DispatchQueue.main,
         completionHandler: @escaping (ApiResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask? {
         fetch(
             api: api,
             method: method,
             request: request,
-            completionQueue: DispatchQueue.main,
+            completionQueue: completionQueue,
             completionHandler: completionHandler
         )
     }

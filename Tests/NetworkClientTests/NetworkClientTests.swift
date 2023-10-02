@@ -108,6 +108,25 @@ final class NetworkClientTests: XCTestCase {
         }
         waitForExpectations(timeout: 1, handler: nil)
     }
+    
+    func testFetchDeleteDefaultRequest_handlesSuccessResponse() throws {
+        setupMockResponse(statusCode: 204)
+        let expectation = expectation(description: "NetworkClient fetch expectation")
+        networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .delete(),
+            completionQueue: queue
+        ) { response in
+            switch response {
+            case .success:
+                break
+            case .failure:
+                XCTFail()
+            }
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1, handler: nil)
+    }
 
     func testFetchPatch_handlesSuccessResponse() throws {
         let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
@@ -423,7 +442,10 @@ final class NetworkClientTests: XCTestCase {
 }
 
 extension NetworkClientTests {
-    private func setupMockResponse(statusCode: Int? = nil, data: Data = Data()) {
+    private func setupMockResponse(
+        statusCode: Int? = nil,
+        data: Data = Data()
+    ) {
         MockURLProtocol.requestHandler = { request in
             guard let url = request.url else {
                 XCTFail("Request URL is nil")
