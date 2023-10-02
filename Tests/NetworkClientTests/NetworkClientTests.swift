@@ -308,6 +308,19 @@ final class NetworkClientTests: XCTestCase {
         XCTAssertEqual(data, expected)
     }
     
+    func testFetchPatchAsync_successfulDataFetch() async throws {
+        let mockJSONData = try XCTUnwrap("{\"message\":\"success\"}".data(using: .utf8))
+        let expected = MockDto(message: "success")
+        setupMockResponse(statusCode: 200, data: mockJSONData)
+
+        let data = try? await networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .patch(),
+            request: request
+        )
+        XCTAssertEqual(data, expected)
+    }
+    
     func testFetchDeleteAsync_successfulDataFetch() async throws {
         setupMockResponse(statusCode: 204)
 
@@ -315,6 +328,16 @@ final class NetworkClientTests: XCTestCase {
             api: MockApi.endpoint,
             method: .delete(),
             request: request
+        )
+        XCTAssertEqual(data, nil)
+    }
+    
+    func testFetchDeleteAsyncNoRequest_successfulDataFetch() async throws {
+        setupMockResponse(statusCode: 204)
+
+        let data = try? await networkClient.fetch(
+            api: MockApi.endpoint,
+            method: .delete()
         )
         XCTAssertEqual(data, nil)
     }

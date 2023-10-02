@@ -36,4 +36,16 @@ public extension NetworkClient {
             completionHandler: completionHandler
         )
     }
+    
+    func fetch<T: APIRequest>(
+        api: URLGenerator,
+        method: HTTPMethod,
+        request: T = DefaultRequest()
+    ) async throws -> T.ResponseDataType? {
+        try await fetch(
+            api: api,
+            method: method,
+            request: request
+        )
+    }
 }

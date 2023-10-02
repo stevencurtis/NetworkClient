@@ -18,7 +18,7 @@ public final class MainNetworkClient: NetworkClient {
         let (data, response) = try await urlSession.data(for: urlRequest)
         let httpResponse = try self.handleResponse(data, response)
         try handleStatusCode(statusCode: httpResponse.statusCode)
-        return try parseData(data, for: request)
+        return httpResponse.statusCode == 204 ? nil : try parseData(data, for: request)
     }
     
     @discardableResult
