@@ -1,0 +1,1 @@
+struct DefaultRequest: APIRequest {}

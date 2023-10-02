@@ -13,6 +13,21 @@ extension HTTPMethod: CustomStringConvertible {
         return self.description
     }
     
+    public var description: String {
+        switch self {
+            case .get:
+                return "GET"
+            case .post:
+                return "POST"
+            case .put:
+                return "PUT"
+            case .delete:
+                return "DELETE"
+            case .patch:
+                return "PATCH"
+        }
+    }
+    
     func getHeaders() -> [String: String]? {
         switch self {
         case .get(headers: let headers, _):
@@ -55,21 +70,6 @@ extension HTTPMethod: CustomStringConvertible {
             return nil
         case .patch:
             return nil
-        }
-    }
-    
-    public var description: String {
-        switch self {
-            case .get:
-                return "GET"
-            case .post:
-                return "POST"
-            case .put:
-                return "PUT"
-            case .delete:
-                return "DELETE"
-            case .patch:
-                return "PATCH"
         }
     }
 }
