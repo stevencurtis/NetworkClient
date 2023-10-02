@@ -19,7 +19,7 @@ public protocol NetworkClient {
     ) async throws -> T.ResponseDataType?
 }
 
-extension NetworkClient {
+public extension NetworkClient {
     @discardableResult
     func fetch<T: APIRequest>(
         api: URLGenerator,
