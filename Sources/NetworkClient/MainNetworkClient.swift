@@ -13,7 +13,7 @@ public final class MainNetworkClient: NetworkClient {
         api: URLGenerator,
         method: HTTPMethod,
         request: T
-    ) async throws -> T.ResponseDataType {
+    ) async throws -> T.ResponseDataType? {
         let urlRequest = try createURLRequest(api: api, method: method, request: request)
         let (data, response) = try await urlSession.data(for: urlRequest)
         let httpResponse = try self.handleResponse(data, response)
@@ -27,7 +27,7 @@ public final class MainNetworkClient: NetworkClient {
         method: HTTPMethod,
         request: T,
         completionQueue: DispatchQueue,
-        completionHandler: @escaping (ApiResponse<T.ResponseDataType>) -> Void
+        completionHandler: @escaping (ApiResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask? {
         do {
             let urlRequest = try createURLRequest(
@@ -65,12 +65,20 @@ public final class MainNetworkClient: NetworkClient {
                 do {
                     let httpResponse = try self.handleResponse(validData, response)
                     try self.handleStatusCode(statusCode: httpResponse.statusCode)
-                    let parsedResponse = try self.parseData(validData, for: request)
-                    self.completeOnQueue(
-                        completionQueue,
-                        with: .success(parsedResponse),
-                        completionHandler: completionHandler
-                    )
+                    if case .delete = method {
+                        self.completeOnQueue(
+                            completionQueue,
+                            with: .success(nil),
+                            completionHandler: completionHandler
+                        )
+                    } else {
+                        let parsedResponse = try self.parseData(validData, for: request)
+                        self.completeOnQueue(
+                            completionQueue,
+                            with: .success(parsedResponse),
+                            completionHandler: completionHandler
+                        )
+                    }
                 } catch let apiError as ApiError {
                     self.completeOnQueue(
                         completionQueue,
