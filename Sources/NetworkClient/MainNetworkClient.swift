@@ -2,6 +2,8 @@
 
 import Foundation
 
+struct DefaultRequest: APIRequest {}
+
 public final class MainNetworkClient: NetworkClient {
     private let urlSession: URLSession
     

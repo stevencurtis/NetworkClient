@@ -12,6 +12,12 @@ public protocol APIRequest {
     ) throws -> URLRequest
 }
 
+extension APIRequest where ResponseDataType == Data {
+    public func parseResponse(data: Data) throws -> Data {
+        return data
+    }
+}
+
 extension APIRequest {
     public func make(api: URLGenerator, method: HTTPMethod) throws -> URLRequest {
         guard let url = api.url else {

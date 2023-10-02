@@ -24,9 +24,15 @@ extension NetworkClient {
     func fetch<T: APIRequest>(
         api: URLGenerator,
         method: HTTPMethod,
-        request: T,
+        request: T = DefaultRequest(),
         completionHandler: @escaping (ApiResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask? {
-        fetch(api: api, method: method, request: request, completionQueue: DispatchQueue.main, completionHandler: completionHandler)
+        fetch(
+            api: api,
+            method: method,
+            request: request,
+            completionQueue: DispatchQueue.main,
+            completionHandler: completionHandler
+        )
     }
 }
