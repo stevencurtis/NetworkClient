@@ -1,1 +1,3 @@
-struct DefaultRequest: APIRequest {}
+public struct DefaultRequest: APIRequest {
+    public init() {}
+}
