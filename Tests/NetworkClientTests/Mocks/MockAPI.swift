@@ -3,7 +3,7 @@
 import Foundation
 @testable import NetworkClient
 
-enum MockApi: URLGenerator {
+enum MockAPI: URLGenerator {
     case endpoint
     
     var url: URL? {

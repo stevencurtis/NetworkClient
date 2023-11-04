@@ -2,11 +2,11 @@
 
 import Foundation
 
-public enum ApiResponse<T> {
+public enum APIResponse<T> {
     case success(T?)
-    case failure(ApiError)
+    case failure(APIError)
 
-    public var result: Result<T?, ApiError> {
+    public var result: Result<T?, APIError> {
         switch self {
         case let .success(value):
             return .success(value)

@@ -21,7 +21,7 @@ extension APIRequest where ResponseDataType == Data {
 extension APIRequest {
     public func make(api: URLGenerator, method: HTTPMethod) throws -> URLRequest {
         guard let url = api.url else {
-            throw ApiError.request
+            throw APIError.request
         }
         var request = createBaseRequest(url: url)
         request.httpMethod = method.operation

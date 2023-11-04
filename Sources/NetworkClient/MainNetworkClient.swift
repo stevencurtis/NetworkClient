@@ -27,7 +27,7 @@ public final class MainNetworkClient: NetworkClient {
         method: HTTPMethod,
         request: T,
         completionQueue: DispatchQueue,
-        completionHandler: @escaping (ApiResponse<T.ResponseDataType?>) -> Void
+        completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask? {
         do {
             let urlRequest = try createURLRequest(
@@ -79,7 +79,7 @@ public final class MainNetworkClient: NetworkClient {
                             completionHandler: completionHandler
                         )
                     }
-                } catch let apiError as ApiError {
+                } catch let apiError as APIError {
                     self.completeOnQueue(
                         completionQueue,
                         with: .failure(apiError),
@@ -95,7 +95,7 @@ public final class MainNetworkClient: NetworkClient {
             }
             task.resume()
             return task
-        } catch let apiError as ApiError {
+        } catch let apiError as APIError {
             completionQueue.async {
                 self.completeOnQueue(
                     completionQueue,
@@ -121,7 +121,7 @@ public final class MainNetworkClient: NetworkClient {
     
     private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw ApiError.invalidResponse(data, response)
+            throw APIError.invalidResponse(data, response)
         }
         return httpResponse
     }
@@ -135,24 +135,24 @@ public final class MainNetworkClient: NetworkClient {
         case 200 ..< 300:
             break
         case 400:
-            throw ApiError.httpError(.badRequest)
+            throw APIError.httpError(.badRequest)
         case 401:
-            throw ApiError.httpError(.unauthorized)
+            throw APIError.httpError(.unauthorized)
         case 403:
-            throw ApiError.httpError(.forbidden)
+            throw APIError.httpError(.forbidden)
         case 404:
-            throw ApiError.httpError(.notFound)
+            throw APIError.httpError(.notFound)
         case 500:
-            throw ApiError.httpError(.serverError)
+            throw APIError.httpError(.serverError)
         default:
-            throw ApiError.httpError(.unknown)
+            throw APIError.httpError(.unknown)
         }
     }
     
     private func completeOnQueue<T>(
         _ queue: DispatchQueue,
-        with response: ApiResponse<T>,
-        completionHandler: @escaping (ApiResponse<T>) -> Void
+        with response: APIResponse<T>,
+        completionHandler: @escaping (APIResponse<T>) -> Void
     ) {
         queue.async {
             completionHandler(response)

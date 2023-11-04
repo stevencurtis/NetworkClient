@@ -9,7 +9,7 @@ public protocol NetworkClient {
         method: HTTPMethod,
         request: T,
         completionQueue: DispatchQueue,
-        completionHandler: @escaping (ApiResponse<T.ResponseDataType?>) -> Void
+        completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask?
 
     func fetch<T: APIRequest>(
@@ -26,7 +26,7 @@ public extension NetworkClient {
         method: HTTPMethod,
         request: T = DefaultRequest(),
         completionQueue: DispatchQueue = DispatchQueue.main,
-        completionHandler: @escaping (ApiResponse<T.ResponseDataType?>) -> Void
+        completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask? {
         fetch(
             api: api,

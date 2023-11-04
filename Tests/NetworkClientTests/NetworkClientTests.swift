@@ -27,7 +27,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expected = MockDto(message: "testdata")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .get(),
             request: request,
             completionQueue: queue) { response in
@@ -49,7 +49,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expected = MockDto(message: "success")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .post(body: ["text":"text"]),
             request: request,
             completionQueue: queue
@@ -72,7 +72,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expected = MockDto(message: "success")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .put(),
             request: request,
             completionQueue: queue
@@ -93,7 +93,7 @@ final class NetworkClientTests: XCTestCase {
         let expectation = expectation(description: "NetworkClient fetch expectation")
 
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .delete(),
             request: request,
             completionQueue: queue
@@ -113,7 +113,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 204)
         let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .delete(),
             completionQueue: queue
         ) { response in
@@ -136,7 +136,7 @@ final class NetworkClientTests: XCTestCase {
         let expectation = expectation(description: "NetworkClient fetch expectation")
 
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .patch(),
             request: request,
             completionQueue: queue
@@ -156,7 +156,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse()
 
         let expectation = expectation(description: "NetworkClient fetch expectation")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        networkClient.fetch(api: MockAPI.endpoint, method: .get(), request: request, completionQueue: queue) { response in
             switch response {
             case .success:
                 XCTFail()
@@ -172,7 +172,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 400)
 
         let expectation = expectation(description: "NetworkClient fetch expectation")
-        networkClient.fetch(api: MockApi.endpoint, method: .get(), request: request, completionQueue: queue) { response in
+        networkClient.fetch(api: MockAPI.endpoint, method: .get(), request: request, completionQueue: queue) { response in
             switch response {
             case .success:
                 XCTFail()
@@ -190,7 +190,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .get(),
             request: request,
             completionQueue: queue
@@ -211,7 +211,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .get(),
             request: request,
             completionQueue: queue
@@ -232,7 +232,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .get(),
             request: request,
             completionQueue: queue
@@ -253,7 +253,7 @@ final class NetworkClientTests: XCTestCase {
 
         let expectation = expectation(description: "NetworkClient fetch expectation")
         networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .get(),
             request: request,
             completionQueue: queue
@@ -275,7 +275,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 200, data: mockJSONData)
 
         let data = try? await networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .get(),
             request: request
         )
@@ -288,7 +288,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 200, data: mockJSONData)
 
         let data = try? await networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .post(body: [:]),
             request: request
         )
@@ -301,7 +301,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 200, data: mockJSONData)
 
         let data = try? await networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .put(),
             request: request
         )
@@ -314,7 +314,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 200, data: mockJSONData)
 
         let data = try? await networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .patch(),
             request: request
         )
@@ -325,7 +325,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 204)
 
         let data = try? await networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .delete(),
             request: request
         )
@@ -336,7 +336,7 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 204)
 
         let data = try? await networkClient.fetch(
-            api: MockApi.endpoint,
+            api: MockAPI.endpoint,
             method: .delete()
         )
         XCTAssertEqual(data, nil)
@@ -348,12 +348,12 @@ final class NetworkClientTests: XCTestCase {
 
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError = error as? ApiError else {
+            guard let apiError = error as? APIError else {
                 XCTFail()
                 return
             }
@@ -365,12 +365,12 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 400)
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError  = error as? ApiError else {
+            guard let apiError  = error as? APIError else {
                 XCTFail()
                 return
             }
@@ -382,12 +382,12 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 401)
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError  = error as? ApiError else {
+            guard let apiError  = error as? APIError else {
                 XCTFail()
                 return
             }
@@ -399,12 +399,12 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 403)
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError  = error as? ApiError else {
+            guard let apiError  = error as? APIError else {
                 XCTFail()
                 return
             }
@@ -416,12 +416,12 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 404)
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError  = error as? ApiError else {
+            guard let apiError  = error as? APIError else {
                 XCTFail()
                 return
             }
@@ -433,12 +433,12 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 500)
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError  = error as? ApiError else {
+            guard let apiError  = error as? APIError else {
                 XCTFail()
                 return
             }
@@ -450,12 +450,12 @@ final class NetworkClientTests: XCTestCase {
         setupMockResponse(statusCode: 600)
         do {
             _ = try await networkClient.fetch(
-                api: MockApi.endpoint,
+                api: MockAPI.endpoint,
                 method: .get(),
                 request: request
             )
         } catch let error {
-            guard let apiError  = error as? ApiError else {
+            guard let apiError  = error as? APIError else {
                 XCTFail()
                 return
             }

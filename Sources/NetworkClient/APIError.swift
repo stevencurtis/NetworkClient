@@ -2,7 +2,7 @@
 
 import Foundation
 
-public enum ApiError: Equatable, Error {
+public enum APIError: Equatable, Error {
     var localizedDescription: String {
         switch self {
         case .request:
