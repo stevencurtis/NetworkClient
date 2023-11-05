@@ -96,13 +96,11 @@ public final class MainNetworkClient: NetworkClient {
             task.resume()
             return task
         } catch let apiError as APIError {
-            completionQueue.async {
-                self.completeOnQueue(
-                    completionQueue,
-                    with: .failure(apiError),
-                    completionHandler: completionHandler
-                )
-            }
+            completeOnQueue(
+                completionQueue,
+                with: .failure(apiError),
+                completionHandler: completionHandler
+            )
             return nil
         } catch {
             completeOnQueue(
