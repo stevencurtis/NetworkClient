@@ -1,5 +1,5 @@
-import XCTest
 @testable import NetworkClient
+import XCTest
 
 final class DictionaryExtensionTests: XCTestCase {
     func testExtension() throws {

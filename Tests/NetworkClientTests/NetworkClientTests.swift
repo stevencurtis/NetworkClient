@@ -1,5 +1,5 @@
-import XCTest
 @testable import NetworkClient
+import XCTest
 
 final class NetworkClientTests: XCTestCase {
     private var networkClient: NetworkClient!
