@@ -75,7 +75,7 @@ extension HTTPMethod: CustomStringConvertible {
 }
 
 extension HTTPMethod {
-    func with(token newToken: String) -> HTTPMethod {
+    func with(token newToken: String?) -> HTTPMethod {
         switch self {
         case .get(headers: let headers, _):
             return .get(headers: headers, token: newToken)
