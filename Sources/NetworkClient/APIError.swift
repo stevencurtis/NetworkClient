@@ -17,6 +17,8 @@ public enum APIError: Equatable, Error {
             return error.localizedDescription
         case .invalidResponse:
             return "Invalid response"
+        case .refreshToken:
+            return "Refresh token"
         case .unknown:
             return "Unknown Error"
         }
@@ -27,6 +29,7 @@ public enum APIError: Equatable, Error {
     case request
     case httpError(HTTPError)
     case invalidResponse(Data?, URLResponse?)
+    case refreshToken
     case unknown
 }
 

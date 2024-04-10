@@ -4,9 +4,13 @@ import Foundation
 
 public final class MainNetworkClient: NetworkClient {
     private let urlSession: URLSession
-    
-    public init(urlSession: URLSession = .shared) {
+    private let testClosure: (statusCode: Int, api: URLGenerator, method: HTTPMethod, success: () -> (), (Data) -> Bool)?
+    public init(
+        urlSession: URLSession = .shared,
+        testClosure: (statusCode : Int, api: URLGenerator, method: HTTPMethod, success: () -> (), (Data) -> Bool)? = nil
+    ) {
         self.urlSession = urlSession
+        self.testClosure = testClosure
     }
     
     public func fetch<T: APIRequest>(
@@ -14,10 +18,44 @@ public final class MainNetworkClient: NetworkClient {
         method: HTTPMethod,
         request: T
     ) async throws -> T.ResponseDataType? {
+        
         let urlRequest = try createURLRequest(api: api, method: method, request: request)
         let (data, response) = try await urlSession.data(for: urlRequest)
         let httpResponse = try self.handleResponse(data, response)
         try handleStatusCode(statusCode: httpResponse.statusCode)
+//        if let testClosure = testClosure, statusCode == testClosure.0 {
+
+        // this will never work because we can have multiple requests for the refresh token using old and new tokens, it's a mess. The only solution is probably to use a token manager that returns a usable token
+        
+        if let testClosure = testClosure, httpResponse.statusCode == 403 {
+            let storedMethod = method
+            method.with(token: "")
+            // how to change the token?
+//            fetch(api: testClosure.api,
+//                  method: testClosure.method,
+//                  completionHandler: { data in try! testClosure.4(
+//                   data.result.get()!!
+//                )
+//            })
+            
+            let data = try await fetch(api: testClosure.api, method: testClosure.method)
+            if testClosure.4(data!) {
+                
+                // successfully retrieved token. Try again
+                // need to use the updated token here of course
+//                let (data, response) = try await urlSession.data(for: storedRequest)
+//                let httpResponse = try self.handleResponse(data, response)
+//                try handleStatusCode(statusCode: httpResponse.statusCode)
+//                return httpResponse.statusCode == 204 ? nil : try parseData(data, for: request)
+                
+                
+                // Instead of getting bogged down here woe could produce a specific error and let the caller handle this (for now)
+                throw APIError.httpError(.unknown)
+            } else {
+                // did not retrieve token. error
+            }
+            // Make sure that we do not have multiple fetch while retrieving the token (how)
+        }
         return httpResponse.statusCode == 204 ? nil : try parseData(data, for: request)
     }
     
@@ -137,7 +175,8 @@ public final class MainNetworkClient: NetworkClient {
         case 401:
             throw APIError.httpError(.unauthorized)
         case 403:
-            throw APIError.httpError(.forbidden)
+//            throw APIError.httpError(.forbidden)
+            break
         case 404:
             throw APIError.httpError(.notFound)
         case 500:

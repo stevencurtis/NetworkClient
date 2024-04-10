@@ -73,3 +73,20 @@ extension HTTPMethod: CustomStringConvertible {
         }
     }
 }
+
+extension HTTPMethod {
+    func with(token newToken: String) -> HTTPMethod {
+        switch self {
+        case .get(headers: let headers, _):
+            return .get(headers: headers, token: newToken)
+        case .post(headers: let headers, _, body: let body):
+            return .post(headers: headers, token: newToken, body: body)
+        case .put(headers: let headers, _):
+            return .put(headers: headers, token: newToken)
+        case .delete(headers: let headers, _):
+            return .delete(headers: headers, token: newToken)
+        case .patch(headers: let headers, _):
+            return .patch(headers: headers, token: newToken)
+        }
+    }
+}
