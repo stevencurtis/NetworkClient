@@ -18,7 +18,6 @@ public final class MainNetworkClient: NetworkClient {
         method: HTTPMethod,
         request: T
     ) async throws -> T.ResponseDataType? {
-        print(api)
         do {
             return try await performFetchRequest(
                 api: api,
