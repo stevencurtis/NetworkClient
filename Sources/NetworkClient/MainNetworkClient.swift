@@ -5,12 +5,15 @@ import Foundation
 public final class MainNetworkClient: NetworkClient {
     private let urlSession: URLSession
     private let tokenManager: TokenProvider?
+    private let syncTokenManager: SyncTokenProvider?
     public init(
         urlSession: URLSession = .shared,
-        tokenManager: TokenProvider? = nil
+        tokenManager: TokenProvider? = nil,
+        syncTokenManager: SyncTokenProvider? = nil
     ) {
         self.urlSession = urlSession
         self.tokenManager = tokenManager
+        self.syncTokenManager = syncTokenManager
     }
     
     public func fetch<T: APIRequest>(
@@ -77,7 +80,10 @@ public final class MainNetworkClient: NetworkClient {
                 method: method,
                 request: request
             )
-            let task = urlSession.dataTask(with: urlRequest) { data, response, error in
+            let task = urlSession.dataTask(with: urlRequest) {
+                data,
+                response,
+                error in
                 if let error = error {
                     self.completeOnQueue(
                         completionQueue,
@@ -121,7 +127,58 @@ public final class MainNetworkClient: NetworkClient {
                             completionHandler: completionHandler
                         )
                     }
-                } catch let apiError as APIError {
+                }  catch TokenManagerError.notSet,
+                         APIError.httpError(.forbidden)  {
+                    guard let syncTokenManager = self.syncTokenManager else { return }
+                    let body = syncTokenManager.requestBodyData()
+                    let headers = syncTokenManager.headers
+                    
+                    self.fetch(
+                        api: syncTokenManager.refreshTokenAPI,
+                        method: .post(headers: headers, body: body),
+                        completionQueue: completionQueue,
+                        completionHandler: {
+                            response in
+                            switch response {
+                            case .success(let tokenData):
+                                guard let data = tokenData else { return }
+                                syncTokenManager.updateToken(
+                                    data: data,
+                                    completionQueue: completionQueue,
+                                    completion:
+                                        {
+                                            result in
+                                            switch result {
+                                            case .success(let token):
+                                                guard let token = token else { return }
+                                                self.fetch(
+                                                    api: api,
+                                                    method: method.with(
+                                                        token: token
+                                                    ),
+                                                    request: request,
+                                                    completionQueue: completionQueue,
+                                                    completionHandler: completionHandler
+                                                )
+                                            case .failure:
+                                                self.completeOnQueue(
+                                                    completionQueue,
+                                                    with: .failure(.unknown),
+                                                    completionHandler: completionHandler
+                                                )
+                                            }
+                                        })
+                            case .failure:
+                                self.completeOnQueue(
+                                    completionQueue,
+                                    with: .failure(.unknown),
+                                    completionHandler: completionHandler
+                                )
+                            }
+                        }
+                    )
+                }
+                catch let apiError as APIError {
                     self.completeOnQueue(
                         completionQueue,
                         with: .failure(apiError),
