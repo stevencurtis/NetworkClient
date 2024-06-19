@@ -27,7 +27,7 @@ extension APIRequest {
         request.httpMethod = method.operation
         request.allHTTPHeaderFields = method.getHeaders()
         setAuthorization(request: &request, method: method)
-        setRequestBody(request: &request, method: method)
+        try setRequestBody(request: &request, method: method)
         return request
     }
     
@@ -45,14 +45,10 @@ extension APIRequest {
         }
     }
     
-    private func setRequestBody(request: inout URLRequest, method: HTTPMethod) {
+    private func setRequestBody(request: inout URLRequest, method: HTTPMethod) throws {
         if let data = method.getData() {
-            do {
-                let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
-                request.httpBody = bodyData
-            } catch {
-                print("Error serializing JSON: \(error.localizedDescription)")
-            }
+            let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
+            request.httpBody = bodyData
         }
     }
 }
