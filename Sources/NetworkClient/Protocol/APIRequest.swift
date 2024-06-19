@@ -47,9 +47,12 @@ extension APIRequest {
     
     private func setRequestBody(request: inout URLRequest, method: HTTPMethod) {
         if let data = method.getData() {
-            let stringParams = data.parameters()
-            let bodyData = stringParams.data(using: .utf8, allowLossyConversion: false)
-            request.httpBody = bodyData
+            do {
+                let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
+                request.httpBody = bodyData
+            } catch {
+                print("Error serializing JSON: \(error.localizedDescription)")
+            }
         }
     }
 }
