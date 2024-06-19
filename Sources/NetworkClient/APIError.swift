@@ -3,7 +3,7 @@
 import Foundation
 
 public enum APIError: Equatable, Error, LocalizedError {
-    var errorDescription: String {
+    public var errorDescription: String? {
         switch self {
         case .request:
             return "Could not process request"
