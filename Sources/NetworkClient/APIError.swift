@@ -38,7 +38,7 @@ public enum HTTPError: Error, LocalizedError {
     case serverError // 500
     case unknown // for other status codes
 
-    var errorDescription: String {
+    public var errorDescription: String? {
         switch self {
         case .badRequest:
             return "Bad Request"
