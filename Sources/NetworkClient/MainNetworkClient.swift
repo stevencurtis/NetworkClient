@@ -113,8 +113,7 @@ public final class MainNetworkClient: NetworkClient {
     }
     
     private func createURLRequest<T: APIRequest>(api: URLGenerator, method: HTTPMethod, request: T) throws -> URLRequest {
-        let urlRequest = try request.make(api: api, method: method)
-        return urlRequest
+        return try request.make(api: api, method: method)
     }
     
     private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
