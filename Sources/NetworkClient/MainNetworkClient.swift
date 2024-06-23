@@ -3,10 +3,18 @@
 import Foundation
 
 public final class MainNetworkClient: NetworkClient {
+    public enum TokenType {
+        case bearer(token: String)
+        case queryParameter(token: String)
+        case requestBody(token: String)
+        case customHeader(headerName: String, token: String)
+    }
     private let urlSession: URLSession
+    private let token: TokenType?
     
-    public init(urlSession: URLSession = .shared) {
+    public init(urlSession: URLSession = .shared, token: TokenType? = nil) {
         self.urlSession = urlSession
+        self.token = token
     }
     
     public func fetch<T: APIRequest>(
@@ -113,7 +121,49 @@ public final class MainNetworkClient: NetworkClient {
     }
     
     private func createURLRequest<T: APIRequest>(api: URLGenerator, method: HTTPMethod, request: T) throws -> URLRequest {
-        return try request.make(api: api, method: method)
+        var urlRequest = try request.make(api: api, method: method)
+        if let token = token {
+            switch token {
+            case .bearer(let bearerToken):
+                urlRequest.setValue(
+                    "Bearer \(bearerToken)",
+                    forHTTPHeaderField: "Authorization"
+                )
+            case .queryParameter(let queryToken):
+                if var urlComponents = URLComponents(
+                    url: urlRequest.url!,
+                    resolvingAgainstBaseURL: false
+                ) {
+                    var queryItems = urlComponents.queryItems ?? []
+                    queryItems.append(
+                        URLQueryItem(
+                            name: "access_token",
+                            value: queryToken
+                        )
+                    )
+                    urlComponents.queryItems = queryItems
+                    urlRequest.url = urlComponents.url
+                }
+            case .requestBody(let bodyToken):
+                var body = try JSONSerialization.jsonObject(
+                    with: urlRequest.httpBody ?? Data(),
+                    options: []
+                ) as? [String: Any] ?? [:]
+                body["access_token"] = bodyToken
+                urlRequest.httpBody = try JSONSerialization.data(
+                    withJSONObject: body,
+                    options: []
+                )
+                urlRequest.setValue(
+                    "application/json",
+                    forHTTPHeaderField: "Content-Type"
+                )
+            case .customHeader(let headerName, let customToken):
+                urlRequest.setValue(customToken, forHTTPHeaderField: headerName)
+            }
+        }
+        
+        return urlRequest
     }
     
     private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
