@@ -26,7 +26,6 @@ extension APIRequest {
         var request = createBaseRequest(url: url)
         request.httpMethod = method.operation
         request.allHTTPHeaderFields = method.getHeaders()
-        setAuthorization(request: &request, method: method)
         try setRequestBody(request: &request, method: method)
         return request
     }
@@ -37,12 +36,6 @@ extension APIRequest {
             cachePolicy: .useProtocolCachePolicy,
             timeoutInterval: 30.0
         )
-    }
-    
-    private func setAuthorization(request: inout URLRequest, method: HTTPMethod) {
-        if let bearerToken = method.getToken() {
-            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-        }
     }
     
     private func setRequestBody(request: inout URLRequest, method: HTTPMethod) throws {
