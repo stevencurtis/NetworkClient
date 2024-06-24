@@ -39,9 +39,19 @@ extension APIRequest {
     }
     
     private func setRequestBody(request: inout URLRequest, method: HTTPMethod) throws {
-        if let data = method.getData() {
-            let bodyData = try JSONSerialization.data(withJSONObject: data, options: [])
-            request.httpBody = bodyData
+        if let body = method.getBody() {
+            switch body {
+            case .json(let json):
+                let bodyData = try JSONSerialization.data(withJSONObject: json, options: [])
+                request.httpBody = bodyData
+            case .encodable(let codableBody):
+                do {
+                    let jsonData = try JSONEncoder().encode(codableBody)
+                    request.httpBody = jsonData
+                } catch {
+                    throw error
+                }
+            }
         }
     }
 }

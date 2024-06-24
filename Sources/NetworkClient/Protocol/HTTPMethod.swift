@@ -2,10 +2,15 @@
 
 public enum HTTPMethod {
     case get(headers: [String : String] = [:], token: String? = nil)
-    case post(headers: [String : String] = [:], token: String? = nil, body: [String: Any])
-    case put(headers: [String : String] = [:], token: String? = nil, body: [String: Any]? = nil)
+    case post(headers: [String : String] = [:], token: String? = nil, body: HTTPBody)
+    case put(headers: [String : String] = [:], token: String? = nil, body: HTTPBody? = nil)
     case delete(headers: [String : String] = [:], token: String? = nil)
-    case patch(headers: [String : String] = [:], token: String? = nil)
+    case patch(headers: [String : String] = [:], token: String? = nil, body: HTTPBody)
+}
+
+public enum HTTPBody {
+    case json([String: Any])
+    case encodable(Encodable)
 }
 
 extension HTTPMethod: CustomStringConvertible {
@@ -38,7 +43,7 @@ extension HTTPMethod: CustomStringConvertible {
             return headers
         case .delete(headers: let headers, _):
             return headers
-        case .patch(headers: let headers, _):
+        case .patch(headers: let headers, _, body: _):
             return headers
         }
     }
@@ -53,12 +58,12 @@ extension HTTPMethod: CustomStringConvertible {
             return token
         case .delete(_, token: let token):
             return token
-        case .patch(_, token: let token):
+        case .patch(_, token: let token, body: _):
             return token
         }
     }
     
-    func getData() -> [String: Any]? {
+    func getBody() -> HTTPBody? {
         switch self {
         case .get:
             return nil

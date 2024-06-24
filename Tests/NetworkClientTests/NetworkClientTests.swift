@@ -50,7 +50,7 @@ final class NetworkClientTests: XCTestCase {
         let expected = MockDto(message: "success")
         networkClient.fetch(
             api: MockAPI.endpoint,
-            method: .post(body: ["text":"text"]),
+            method: .post(body: .encodable(String())),
             request: request,
             completionQueue: queue
         ) { response in
@@ -137,7 +137,7 @@ final class NetworkClientTests: XCTestCase {
 
         networkClient.fetch(
             api: MockAPI.endpoint,
-            method: .patch(),
+            method: .patch(body: .encodable(String())),
             request: request,
             completionQueue: queue
         ) { response in
@@ -289,7 +289,7 @@ final class NetworkClientTests: XCTestCase {
 
         let data = try? await networkClient.fetch(
             api: MockAPI.endpoint,
-            method: .post(body: [:]),
+            method: .post(body: .encodable(String())),
             request: request
         )
         XCTAssertEqual(data, expected)
@@ -315,7 +315,7 @@ final class NetworkClientTests: XCTestCase {
 
         let data = try? await networkClient.fetch(
             api: MockAPI.endpoint,
-            method: .patch(),
+            method: .patch(body: .encodable(String())),
             request: request
         )
         XCTAssertEqual(data, expected)

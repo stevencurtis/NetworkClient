@@ -4,7 +4,7 @@ import Foundation
 
 public final class MainNetworkClient: NetworkClient {
     public enum TokenType {
-        case bearer(token: String)
+        case bearer(token: () -> String?)
         case queryParameter(token: String)
         case requestBody(token: String)
         case customHeader(headerName: String, token: String)
@@ -124,7 +124,8 @@ public final class MainNetworkClient: NetworkClient {
         var urlRequest = try request.make(api: api, method: method)
         if let token = token {
             switch token {
-            case .bearer(let bearerToken):
+            case .bearer(let bearerTokenFunction):
+                guard let bearerToken = bearerTokenFunction() else { throw APIError.noData }
                 urlRequest.setValue(
                     "Bearer \(bearerToken)",
                     forHTTPHeaderField: "Authorization"
