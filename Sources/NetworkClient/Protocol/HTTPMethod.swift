@@ -1,16 +1,16 @@
 //  Created by Steven Curtis
 
+public enum HTTPBody {
+    case json([String: Any])
+    case encodable(Encodable)
+}
+
 public enum HTTPMethod {
     case get(headers: [String : String] = [:], token: String? = nil)
     case post(headers: [String : String] = [:], token: String? = nil, body: HTTPBody)
     case put(headers: [String : String] = [:], token: String? = nil, body: HTTPBody? = nil)
     case delete(headers: [String : String] = [:], token: String? = nil)
     case patch(headers: [String : String] = [:], token: String? = nil, body: HTTPBody)
-}
-
-public enum HTTPBody {
-    case json([String: Any])
-    case encodable(Encodable)
 }
 
 extension HTTPMethod: CustomStringConvertible {

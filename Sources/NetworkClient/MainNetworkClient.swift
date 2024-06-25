@@ -19,10 +19,9 @@ public final class MainNetworkClient: NetworkClient {
     
     public func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T
     ) async throws -> T.ResponseDataType? {
-        let urlRequest = try createURLRequest(api: api, method: method, request: request)
+        let urlRequest = try createURLRequest(api: api, request: request)
         let (data, response) = try await urlSession.data(for: urlRequest)
         let httpResponse = try self.handleResponse(data, response)
         try handleStatusCode(statusCode: httpResponse.statusCode)
@@ -32,7 +31,6 @@ public final class MainNetworkClient: NetworkClient {
     @discardableResult
     public func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T,
         completionQueue: DispatchQueue,
         completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
@@ -40,7 +38,6 @@ public final class MainNetworkClient: NetworkClient {
         do {
             let urlRequest = try createURLRequest(
                 api: api,
-                method: method,
                 request: request
             )
             let task = urlSession.dataTask(with: urlRequest) { data, response, error in
@@ -73,6 +70,7 @@ public final class MainNetworkClient: NetworkClient {
                 do {
                     let httpResponse = try self.handleResponse(validData, response)
                     try self.handleStatusCode(statusCode: httpResponse.statusCode)
+                    let method = api.method
                     if case .delete = method {
                         self.completeOnQueue(
                             completionQueue,
@@ -120,7 +118,8 @@ public final class MainNetworkClient: NetworkClient {
         }
     }
     
-    private func createURLRequest<T: APIRequest>(api: URLGenerator, method: HTTPMethod, request: T) throws -> URLRequest {
+    private func createURLRequest<T: APIRequest>(api: URLGenerator, request: T) throws -> URLRequest {
+        let method = api.method
         var urlRequest = try request.make(api: api, method: method)
         if let token = token {
             switch token {
