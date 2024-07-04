@@ -124,31 +124,35 @@ public final class MainNetworkClient: NetworkClient {
         if let token = token {
             switch token {
             case .bearer(let bearerTokenFunction):
-                guard let bearerToken = bearerTokenFunction() else { throw APIError.noData }
+                guard let bearerToken = bearerTokenFunction() else {
+                    throw APIError.bearerToken
+                }
                 urlRequest.setValue(
                     "Bearer \(bearerToken)",
                     forHTTPHeaderField: "Authorization"
                 )
             case .queryParameter(let queryToken):
-                if var urlComponents = URLComponents(
-                    url: urlRequest.url!,
+                guard let request = urlRequest.url, var urlComponents = URLComponents(
+                    url: request,
                     resolvingAgainstBaseURL: false
-                ) {
-                    var queryItems = urlComponents.queryItems ?? []
-                    queryItems.append(
-                        URLQueryItem(
-                            name: "access_token",
-                            value: queryToken
-                        )
-                    )
-                    urlComponents.queryItems = queryItems
-                    urlRequest.url = urlComponents.url
+                ), var queryItems = urlComponents.queryItems else {
+                    throw APIError.generalToken
                 }
+                queryItems.append(
+                    URLQueryItem(
+                        name: "access_token",
+                        value: queryToken
+                    )
+                )
+                urlComponents.queryItems = queryItems
+                urlRequest.url = urlComponents.url
             case .requestBody(let bodyToken):
-                var body = try JSONSerialization.jsonObject(
-                    with: urlRequest.httpBody ?? Data(),
+                guard let httpBody = urlRequest.httpBody,  var body = try JSONSerialization.jsonObject(
+                    with: httpBody,
                     options: []
-                ) as? [String: Any] ?? [:]
+                ) as? [String: Any] else {
+                    throw APIError.generalToken
+                }
                 body["access_token"] = bodyToken
                 urlRequest.httpBody = try JSONSerialization.data(
                     withJSONObject: body,
@@ -162,7 +166,6 @@ public final class MainNetworkClient: NetworkClient {
                 urlRequest.setValue(customToken, forHTTPHeaderField: headerName)
             }
         }
-        
         return urlRequest
     }
     

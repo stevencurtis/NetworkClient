@@ -10,6 +10,7 @@ public enum APIError: Equatable, Error, LocalizedError {
     case httpError(HTTPError)
     case invalidResponse(Data?, URLResponse?)
     case bearerToken
+    case generalToken
     case unknown
     public var errorDescription: String? {
         switch self {
@@ -27,6 +28,8 @@ public enum APIError: Equatable, Error, LocalizedError {
             return "Invalid response"
         case .bearerToken:
             return "Bearer token error"
+        case .generalToken:
+            return "General token error"
         case .unknown:
             return "Unknown Error"
         }
