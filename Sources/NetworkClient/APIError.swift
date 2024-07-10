@@ -9,7 +9,6 @@ public enum APIError: Equatable, Error, LocalizedError {
     case request
     case httpError(HTTPError)
     case invalidResponse(Data?, URLResponse?)
-    case bearerToken
     case generalToken
     case unknown
     public var errorDescription: String? {
@@ -26,8 +25,6 @@ public enum APIError: Equatable, Error, LocalizedError {
             return error.localizedDescription
         case .invalidResponse:
             return "Invalid response"
-        case .bearerToken:
-            return "Bearer token error"
         case .generalToken:
             return "General token error"
         case .unknown:

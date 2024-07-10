@@ -10,10 +10,16 @@ public final class MainNetworkClient: NetworkClient {
         case customHeader(headerName: String, token: String)
     }
     private let urlSession: URLSession
+    private let configuration: NetworkClientConfiguration
     private let token: TokenType?
     
-    public init(urlSession: URLSession = .shared, token: TokenType? = nil) {
+    public init(
+        urlSession: URLSession = .shared,
+        configuration: NetworkClientConfiguration = NetworkClientConfiguration(),
+        token: TokenType? = nil
+    ) {
         self.urlSession = urlSession
+        self.configuration = configuration
         self.token = token
     }
     
@@ -119,54 +125,83 @@ public final class MainNetworkClient: NetworkClient {
     }
     
     private func createURLRequest<T: APIRequest>(api: URLGenerator, request: T) throws -> URLRequest {
-        let method = api.method
-        var urlRequest = try request.make(api: api, method: method)
-        if let token = token {
-            switch token {
-            case .bearer(let bearerTokenFunction):
-                guard let bearerToken = bearerTokenFunction() else {
-                    throw APIError.bearerToken
-                }
-                urlRequest.setValue(
-                    "Bearer \(bearerToken)",
-                    forHTTPHeaderField: "Authorization"
-                )
-            case .queryParameter(let queryToken):
-                guard let request = urlRequest.url, var urlComponents = URLComponents(
-                    url: request,
-                    resolvingAgainstBaseURL: false
-                ), var queryItems = urlComponents.queryItems else {
-                    throw APIError.generalToken
-                }
-                queryItems.append(
-                    URLQueryItem(
-                        name: "access_token",
-                        value: queryToken
-                    )
-                )
-                urlComponents.queryItems = queryItems
-                urlRequest.url = urlComponents.url
-            case .requestBody(let bodyToken):
-                guard let httpBody = urlRequest.httpBody,  var body = try JSONSerialization.jsonObject(
-                    with: httpBody,
-                    options: []
-                ) as? [String: Any] else {
-                    throw APIError.generalToken
-                }
-                body["access_token"] = bodyToken
-                urlRequest.httpBody = try JSONSerialization.data(
-                    withJSONObject: body,
-                    options: []
-                )
-                urlRequest.setValue(
-                    "application/json",
-                    forHTTPHeaderField: "Content-Type"
-                )
-            case .customHeader(let headerName, let customToken):
-                urlRequest.setValue(customToken, forHTTPHeaderField: headerName)
-            }
+        var urlRequest = try request.make(api: api)
+        if urlRequest.allHTTPHeaderFields?.count == 0 {
+            applyHeaders(to: &urlRequest)
+        }
+        if !tokenSet(to: &urlRequest) {
+            try applyToken(to: &urlRequest)
         }
         return urlRequest
+    }
+
+    private func applyToken(to urlRequest: inout URLRequest) throws {
+        guard let tokenType = token else { return }
+        switch tokenType {
+        case .bearer(let tokenGenerator):
+            try applyBearerToken(tokenGenerator, to: &urlRequest)
+        case .queryParameter(let token):
+            try applyQueryParameterToken(token, to: &urlRequest)
+        case .requestBody(let token):
+            try applyRequestBodyToken(token, to: &urlRequest)
+        case .customHeader(let headerName, let token):
+            applyCustomHeaderToken(headerName, token, to: &urlRequest)
+        }
+    }
+    
+    private func applyBearerToken(_ tokenGenerator: () -> String?, to urlRequest: inout URLRequest) throws {
+        guard let bearerToken = tokenGenerator() else {
+            return
+        }
+        urlRequest.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func applyQueryParameterToken(_ token: String, to urlRequest: inout URLRequest) throws {
+        guard let request = urlRequest.url, var urlComponents = URLComponents(url: request, resolvingAgainstBaseURL: false), var queryItems = urlComponents.queryItems else {
+            throw APIError.generalToken
+        }
+        queryItems.append(URLQueryItem(name: "access_token", value: token))
+        urlComponents.queryItems = queryItems
+        urlRequest.url = urlComponents.url
+    }
+
+    private func applyRequestBodyToken(_ token: String, to urlRequest: inout URLRequest) throws {
+        guard let httpBody = urlRequest.httpBody, var body = try JSONSerialization.jsonObject(
+            with: httpBody,
+            options: []
+        ) as? [String: Any] else {
+            throw APIError.generalToken
+        }
+        body["access_token"] = token
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+    }
+    
+    private func tokenSet(to urlRequest: inout URLRequest) -> Bool {
+        if urlRequest.value(forHTTPHeaderField: "Authorization") != nil {
+            return true
+        }
+        
+        if let request = urlRequest.url, let urlComponents = URLComponents(url: request, resolvingAgainstBaseURL: false), let queryItems = urlComponents.queryItems {
+            if queryItems.contains(where: { $0.name == "access_token" }) {
+                return true
+            }
+        }
+        
+        if let httpBody = urlRequest.httpBody {
+            let body = try? JSONSerialization.jsonObject(
+                with: httpBody,
+                options: []
+            ) as? [String: Any]
+            
+            if let _ = body?["access_token"] as? String {
+                 return true
+            }
+        }
+        return false
+    }
+
+    private func applyCustomHeaderToken(_ headerName: String, _ token: String, to urlRequest: inout URLRequest) {
+        urlRequest.setValue(token, forHTTPHeaderField: headerName)
     }
     
     private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
@@ -207,5 +242,9 @@ public final class MainNetworkClient: NetworkClient {
         queue.async {
             completionHandler(response)
         }
+    }
+    
+    private func applyHeaders(to request: inout URLRequest) {
+        configuration.headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
     }
 }
