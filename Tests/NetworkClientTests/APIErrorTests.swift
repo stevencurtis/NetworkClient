@@ -38,11 +38,6 @@ final class APIErrorTests: XCTestCase {
          XCTAssertEqual(error.errorDescription, "Invalid response")
      }
 
-     func testBearerTokenError() {
-         let error = APIError.bearerToken
-         XCTAssertEqual(error.errorDescription, "Bearer token error")
-     }
-
      func testUnknownError() {
          let error = APIError.unknown
          XCTAssertEqual(error.errorDescription, "Unknown Error")

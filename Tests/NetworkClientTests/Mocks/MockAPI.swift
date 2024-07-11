@@ -13,15 +13,15 @@ enum MockAPI: URLGenerator {
     var method: HTTPMethod {
         switch self {
         case .delete:
-            return .delete()
+            return .delete
         case .get:
-            return .get()
-        case .patch(body: let body):
-            return .patch(body: body)
-        case .post(body: let body):
-            return .post(body: body)
+            return .get
+        case .patch:
+            return .patch
+        case .post:
+            return .post
         case .put:
-            return .put()
+            return .put
         }
     }
     
