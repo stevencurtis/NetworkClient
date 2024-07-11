@@ -28,12 +28,15 @@ final class APIErrorTests: XCTestCase {
          XCTAssertEqual(error.errorDescription, httpError.localizedDescription)
      }
 
-     func testInvalidResponseError() {
+     func testInvalidResponseError() throws {
          let data = Data("some data".utf8)
-         let response = HTTPURLResponse(url: URL(string: "http://example.com")!,
-                                        statusCode: 400,
-                                        httpVersion: nil,
-                                        headerFields: nil)
+         let url = try XCTUnwrap(URL(string: "http://example.com"))
+         let response = HTTPURLResponse(
+            url: url,
+            statusCode: 400,
+            httpVersion: nil,
+            headerFields: nil
+         )
          let error = APIError.invalidResponse(data, response)
          XCTAssertEqual(error.errorDescription, "Invalid response")
      }
