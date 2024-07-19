@@ -2,7 +2,7 @@
 
 import Foundation
 
-public enum APIError: Equatable, Error, LocalizedError {
+public enum APIError: Error, LocalizedError {
     case network(errorMessage: String)
     case noData
     case parseResponse(errorMessage: String)
