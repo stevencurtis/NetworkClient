@@ -13,7 +13,7 @@ public protocol APIRequest {
 
 extension APIRequest where ResponseDataType == Data {
     public func parseResponse(data: Data) throws -> Data {
-        return data
+        data
     }
 }
 

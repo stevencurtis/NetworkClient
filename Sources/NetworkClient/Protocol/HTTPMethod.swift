@@ -28,5 +28,4 @@ extension HTTPMethod: CustomStringConvertible {
                 return "PATCH"
         }
     }
-
 }
