@@ -117,10 +117,52 @@ extension APIRequest {
 A typical concrete implementation of a request might look something like the following:
 
 ```swift
-struct DogRequest: APIRequest {
-    func parseResponse(data: Data) throws -> BreedsListApiDto {
+public struct CustomAccountRequest<T: Decodable>: APIRequest {
+    public var body: HTTPBody? = nil
+    public func parseResponse(data: Data) throws -> T {
         let decoder = JSONDecoder()
-        return try decoder.decode(BreedsListApiDto.self, from: data)
+        return try decoder.decode(ResponseDataType.self, from: data)
+    }
+    
+    public typealias ResponseDataType = T
+    public init() { }
+    public func make(api: URLGenerator) throws -> URLRequest {
+        guard let url = api.url else {
+            throw APIError.request
+        }
+        var request = createBaseRequest(url: url)
+        request.httpMethod = api.method.operation
+        request.allHTTPHeaderFields = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        // Can choose to set the token here
+        if let token = KeyChainManager().load(
+            key: Constants.tokenKeyChainKey
+        ) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return request
+    }
+    
+    private func createBaseRequest(url: URL) -> URLRequest {
+        return URLRequest(
+            url: url,
+            cachePolicy: .useProtocolCachePolicy,
+            timeoutInterval: 30.0
+        )
+    }
+    
+    private func setRequestBody(request: inout URLRequest, body: HTTPBody?) throws {
+        guard let body else { return }
+        switch body {
+        case .json(let json):
+            let bodyData = try JSONSerialization.data(withJSONObject: json, options: [])
+            request.httpBody = bodyData
+        case .encodable(let encodableBody):
+            let jsonData = try JSONEncoder().encode(encodableBody)
+            request.httpBody = jsonData
+        }
     }
 }
 ```
@@ -132,12 +174,35 @@ Defining Error Types:
 The framework defines a custom error type ApiError to encapsulate common HTTP errors and other network-related errors.
 
 ```swift
-enum ApiError: Error {
-    case httpError(HttpError)
+public enum APIError: Error, LocalizedError {
     case network(errorMessage: String)
     case noData
+    case parseResponse(errorMessage: String)
+    case request
+    case httpError(HTTPError)
     case invalidResponse(Data?, URLResponse?)
+    case generalToken
     case unknown
+    public var errorDescription: String? {
+        switch self {
+        case .request:
+            return "Could not process request"
+        case .network(errorMessage: let error):
+            return error
+        case .noData:
+            return "No data"
+        case .parseResponse(let error):
+            return error
+        case .httpError(let error):
+            return error.localizedDescription
+        case .invalidResponse:
+            return "Invalid response"
+        case .generalToken:
+            return "General token error"
+        case .unknown:
+            return "Unknown Error"
+        }
+    }
 }
 ```
 
@@ -227,7 +292,6 @@ public protocol NetworkClient {
     @discardableResult
     func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T,
         completionQueue: DispatchQueue,
         completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
@@ -235,7 +299,6 @@ public protocol NetworkClient {
 
     func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T
     ) async throws -> T.ResponseDataType?
 }
@@ -244,14 +307,12 @@ public extension NetworkClient {
     @discardableResult
     func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T = DefaultRequest(),
         completionQueue: DispatchQueue = DispatchQueue.main,
         completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
     ) -> URLSessionTask? {
         fetch(
             api: api,
-            method: method,
             request: request,
             completionQueue: completionQueue,
             completionHandler: completionHandler
@@ -260,12 +321,10 @@ public extension NetworkClient {
     
     func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T = DefaultRequest()
     ) async throws -> T.ResponseDataType? {
         try await fetch(
             api: api,
-            method: method,
             request: request
         )
     }
@@ -291,18 +350,31 @@ This of course calls a concrete network client.
 
 ```swift
 public final class MainNetworkClient: NetworkClient {
+    public enum TokenType {
+        case bearer(token: () -> String?)
+        case queryParameter(token: String)
+        case requestBody(token: String)
+        case customHeader(headerName: String, token: String)
+    }
     private let urlSession: URLSession
+    private let configuration: NetworkClientConfiguration
+    private let token: TokenType?
     
-    public init(urlSession: URLSession = .shared) {
+    public init(
+        urlSession: URLSession = .shared,
+        configuration: NetworkClientConfiguration = NetworkClientConfiguration(),
+        token: TokenType? = nil
+    ) {
         self.urlSession = urlSession
+        self.configuration = configuration
+        self.token = token
     }
     
     public func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T
     ) async throws -> T.ResponseDataType? {
-        let urlRequest = try createURLRequest(api: api, method: method, request: request)
+        let urlRequest = try createURLRequest(api: api, request: request)
         let (data, response) = try await urlSession.data(for: urlRequest)
         let httpResponse = try self.handleResponse(data, response)
         try handleStatusCode(statusCode: httpResponse.statusCode)
@@ -312,7 +384,6 @@ public final class MainNetworkClient: NetworkClient {
     @discardableResult
     public func fetch<T: APIRequest>(
         api: URLGenerator,
-        method: HTTPMethod,
         request: T,
         completionQueue: DispatchQueue,
         completionHandler: @escaping (APIResponse<T.ResponseDataType?>) -> Void
@@ -320,7 +391,6 @@ public final class MainNetworkClient: NetworkClient {
         do {
             let urlRequest = try createURLRequest(
                 api: api,
-                method: method,
                 request: request
             )
             let task = urlSession.dataTask(with: urlRequest) { data, response, error in
@@ -353,6 +423,7 @@ public final class MainNetworkClient: NetworkClient {
                 do {
                     let httpResponse = try self.handleResponse(validData, response)
                     try self.handleStatusCode(statusCode: httpResponse.statusCode)
+                    let method = api.method
                     if case .delete = method {
                         self.completeOnQueue(
                             completionQueue,
@@ -400,9 +471,84 @@ public final class MainNetworkClient: NetworkClient {
         }
     }
     
-    private func createURLRequest<T: APIRequest>(api: URLGenerator, method: HTTPMethod, request: T) throws -> URLRequest {
-        let urlRequest = try request.make(api: api, method: method)
+    private func createURLRequest<T: APIRequest>(api: URLGenerator, request: T) throws -> URLRequest {
+        var urlRequest = try request.make(api: api)
+        if urlRequest.allHTTPHeaderFields?.count == 0 {
+            applyHeaders(to: &urlRequest)
+        }
+        if !tokenSet(to: &urlRequest) {
+            try applyToken(to: &urlRequest)
+        }
         return urlRequest
+    }
+
+    private func applyToken(to urlRequest: inout URLRequest) throws {
+        guard let tokenType = token else { return }
+        switch tokenType {
+        case .bearer(let tokenGenerator):
+            try applyBearerToken(tokenGenerator, to: &urlRequest)
+        case .queryParameter(let token):
+            try applyQueryParameterToken(token, to: &urlRequest)
+        case .requestBody(let token):
+            try applyRequestBodyToken(token, to: &urlRequest)
+        case .customHeader(let headerName, let token):
+            applyCustomHeaderToken(headerName, token, to: &urlRequest)
+        }
+    }
+    
+    private func applyBearerToken(_ tokenGenerator: () -> String?, to urlRequest: inout URLRequest) throws {
+        guard let bearerToken = tokenGenerator() else {
+            return
+        }
+        urlRequest.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func applyQueryParameterToken(_ token: String, to urlRequest: inout URLRequest) throws {
+        guard let request = urlRequest.url, var urlComponents = URLComponents(url: request, resolvingAgainstBaseURL: false), var queryItems = urlComponents.queryItems else {
+            throw APIError.generalToken
+        }
+        queryItems.append(URLQueryItem(name: "access_token", value: token))
+        urlComponents.queryItems = queryItems
+        urlRequest.url = urlComponents.url
+    }
+
+    private func applyRequestBodyToken(_ token: String, to urlRequest: inout URLRequest) throws {
+        guard let httpBody = urlRequest.httpBody, var body = try JSONSerialization.jsonObject(
+            with: httpBody,
+            options: []
+        ) as? [String: Any] else {
+            throw APIError.generalToken
+        }
+        body["access_token"] = token
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+    }
+    
+    private func tokenSet(to urlRequest: inout URLRequest) -> Bool {
+        if urlRequest.value(forHTTPHeaderField: "Authorization") != nil {
+            return true
+        }
+        
+        if let request = urlRequest.url, let urlComponents = URLComponents(url: request, resolvingAgainstBaseURL: false), let queryItems = urlComponents.queryItems {
+            if queryItems.contains(where: { $0.name == "access_token" }) {
+                return true
+            }
+        }
+        
+        if let httpBody = urlRequest.httpBody {
+            let body = try? JSONSerialization.jsonObject(
+                with: httpBody,
+                options: []
+            ) as? [String: Any]
+            
+            if let _ = body?["access_token"] as? String {
+                 return true
+            }
+        }
+        return false
+    }
+
+    private func applyCustomHeaderToken(_ headerName: String, _ token: String, to urlRequest: inout URLRequest) {
+        urlRequest.setValue(token, forHTTPHeaderField: headerName)
     }
     
     private func handleResponse(_ data: Data, _ response: URLResponse?) throws -> (HTTPURLResponse) {
@@ -444,6 +590,10 @@ public final class MainNetworkClient: NetworkClient {
             completionHandler(response)
         }
     }
+    
+    private func applyHeaders(to request: inout URLRequest) {
+        configuration.headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
+    }
 }
 ```
 
@@ -475,8 +625,12 @@ due to `BasicRequest` being provided in the network client library
 
 ```swift
 public struct BasicRequest<T: Decodable>: APIRequest {
+    public let body: HTTPBody?
+    
     public typealias ResponseDataType = T
-    public init() { }
+    public init(body: HTTPBody? = nil) { 
+        self.body = body
+    }
     public func parseResponse(data: Data) throws -> ResponseDataType {
         let decoder = JSONDecoder()
         return try decoder.decode(ResponseDataType.self, from: data)
@@ -491,12 +645,13 @@ The design of `MainNetworkClient` represents a unified approach to networking in
 The network client expects the caller to use the classic HTTP method requests. The  GET, POST, PUT, DELETE, and PATCH methods can be called  along with support for custom headers, and request bodies as necessary.
 
 ```swift
+public enum HTTPBody {
+    case json([String: Any])
+    case encodable(Encodable)
+}
+
 public enum HTTPMethod {
-    case get(headers: [String : String] = [:], token: String? = nil)
-    case post(headers: [String : String] = [:], token: String? = nil, body: [String: Any])
-    case put(headers: [String : String] = [:], token: String? = nil)
-    case delete(headers: [String : String] = [:], token: String? = nil)
-    case patch(headers: [String : String] = [:], token: String? = nil)
+    case get, post, put, delete, patch
 }
 
 extension HTTPMethod: CustomStringConvertible {
@@ -518,51 +673,6 @@ extension HTTPMethod: CustomStringConvertible {
                 return "PATCH"
         }
     }
-    
-    func getHeaders() -> [String: String]? {
-        switch self {
-        case .get(headers: let headers, _):
-            return headers
-        case .post(headers: let headers, _, body: _):
-            return headers
-        case .put(headers: let headers, _):
-            return headers
-        case .delete(headers: let headers, _):
-            return headers
-        case .patch(headers: let headers, _):
-            return headers
-        }
-    }
-    
-    func getToken() -> String? {
-        switch self {
-        case .get(_, token: let token):
-            return token
-        case .post(_, token: let token, body: _):
-            return token
-        case .put(_, token: let token):
-            return token
-        case .delete(_, token: let token):
-            return token
-        case .patch(_, token: let token):
-            return token
-        }
-    }
-    
-    func getData() -> [String: Any]? {
-        switch self {
-        case .get:
-            return nil
-        case .post( _, _, body: let body):
-            return body
-        case .put:
-            return nil
-        case .delete:
-            return nil
-        case .patch:
-            return nil
-        }
-    }
 }
 ```
 
@@ -574,11 +684,10 @@ Protocol signature:
 ```swift
 public protocol APIRequest {
     associatedtype ResponseDataType
-    
+    var body: HTTPBody? { get }
     func parseResponse(data: Data) throws -> ResponseDataType
     func make(
-        api: URLGenerator,
-        method: HTTPMethod
+        api: URLGenerator
     ) throws -> URLRequest
 }
 ```
@@ -588,20 +697,19 @@ which has the following extensions to enhance ease of use for users of the frame
 ```swift
 extension APIRequest where ResponseDataType == Data {
     public func parseResponse(data: Data) throws -> Data {
-        return data
+        data
     }
 }
 
 extension APIRequest {
-    public func make(api: URLGenerator, method: HTTPMethod) throws -> URLRequest {
+    var body: HTTPBody? { nil }
+    public func make(api: URLGenerator) throws -> URLRequest {
         guard let url = api.url else {
             throw APIError.request
         }
         var request = createBaseRequest(url: url)
-        request.httpMethod = method.operation
-        request.allHTTPHeaderFields = method.getHeaders()
-        setAuthorization(request: &request, method: method)
-        setRequestBody(request: &request, method: method)
+        request.httpMethod = api.method.operation
+        try setRequestBody(request: &request, body: body)
         return request
     }
     
@@ -613,17 +721,15 @@ extension APIRequest {
         )
     }
     
-    private func setAuthorization(request: inout URLRequest, method: HTTPMethod) {
-        if let bearerToken = method.getToken() {
-            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
-        }
-    }
-    
-    private func setRequestBody(request: inout URLRequest, method: HTTPMethod) {
-        if let data = method.getData() {
-            let stringParams = data.parameters()
-            let bodyData = stringParams.data(using: .utf8, allowLossyConversion: false)
+    private func setRequestBody(request: inout URLRequest, body: HTTPBody?) throws {
+        guard let body else { return }
+        switch body {
+        case .json(let json):
+            let bodyData = try JSONSerialization.data(withJSONObject: json, options: [])
             request.httpBody = bodyData
+        case .encodable(let encodableBody):
+            let jsonData = try JSONEncoder().encode(encodableBody)
+            request.httpBody = jsonData
         }
     }
 }
@@ -636,10 +742,52 @@ The `make(api:method:)` function, on the other hand, is tasked with creating a `
 A typical concrete implementation might look like the following:
 
 ```swift
-struct DogRequest: APIRequest {
-    func parseResponse(data: Data) throws -> BreedsListApiDto {
+public struct CustomAccountRequest<T: Decodable>: APIRequest {
+    public var body: HTTPBody? = nil
+    public func parseResponse(data: Data) throws -> T {
         let decoder = JSONDecoder()
-        return try decoder.decode(BreedsListApiDto.self, from: data)
+        return try decoder.decode(ResponseDataType.self, from: data)
+    }
+    
+    public typealias ResponseDataType = T
+    public init() { }
+    public func make(api: URLGenerator) throws -> URLRequest {
+        guard let url = api.url else {
+            throw APIError.request
+        }
+        var request = createBaseRequest(url: url)
+        request.httpMethod = api.method.operation
+        request.allHTTPHeaderFields = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        // Can choose to set the token here
+        if let token = KeyChainManager().load(
+            key: Constants.tokenKeyChainKey
+        ) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return request
+    }
+    
+    private func createBaseRequest(url: URL) -> URLRequest {
+        return URLRequest(
+            url: url,
+            cachePolicy: .useProtocolCachePolicy,
+            timeoutInterval: 30.0
+        )
+    }
+    
+    private func setRequestBody(request: inout URLRequest, body: HTTPBody?) throws {
+        guard let body else { return }
+        switch body {
+        case .json(let json):
+            let bodyData = try JSONSerialization.data(withJSONObject: json, options: [])
+            request.httpBody = bodyData
+        case .encodable(let encodableBody):
+            let jsonData = try JSONEncoder().encode(encodableBody)
+            request.httpBody = jsonData
+        }
     }
 }
 ```
@@ -648,9 +796,7 @@ struct DogRequest: APIRequest {
 This is a protocol designed to abstract the creation of URLs for network requests. Conforming types can encapsulate the logic required to construct URLs dynamically making the process of generating URLs for different endpoints structured and maintainable.
 
 ```swift
-public protocol URLGenerator {
-    var url: URL? { get }
-}
+public typealias URLGenerator = URLProvider & HTTPMethodProvider
 ```
 
 The protocol itself describes url that is a computed property that returns an optional `URL` instance.
@@ -667,6 +813,10 @@ enum Api: URLGenerator {
         components.host = "dog.ceo"
         components.path = path
         return components.url
+    }
+    
+    var method: HTTPMethod {
+        .get
     }
 }
 
