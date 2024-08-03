@@ -8,10 +8,11 @@ final class NetworkClientTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [MockURLProtocol.self]
-        let mockSession = URLSession(configuration: configuration)
-        networkClient = MainNetworkClient(urlSession: mockSession)
+        let urlConfiguration = URLSessionConfiguration.ephemeral
+        urlConfiguration.protocolClasses = [MockURLProtocol.self]
+        let mockSession = URLSession(configuration: urlConfiguration)
+        let configuration = NetworkClientConfiguration.make(urlSession: mockSession)
+        networkClient = MainNetworkClient(configuration: configuration)
     }
     
     override func tearDown() {
