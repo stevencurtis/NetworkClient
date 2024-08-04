@@ -45,20 +45,34 @@ public struct URLRequestHandler: URLRequestCreator {
 
     private func applyBearerToken(_ tokenGenerator: () -> String?, to urlRequest: inout URLRequest) throws {
         guard let bearerToken = tokenGenerator() else { return }
-        urlRequest.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue(
+            "Bearer \(bearerToken)",
+            forHTTPHeaderField: "Authorization"
+        )
     }
 
     private func applyQueryParameterToken(_ token: String, to urlRequest: inout URLRequest) throws {
-        guard let request = urlRequest.url, var urlComponents = URLComponents(url: request, resolvingAgainstBaseURL: false), var queryItems = urlComponents.queryItems else {
+        guard let request = urlRequest.url, var urlComponents = URLComponents(
+            url: request,
+            resolvingAgainstBaseURL: false
+        ) else {
             throw APIError.generalToken
         }
-        queryItems.append(URLQueryItem(name: "access_token", value: token))
-        urlComponents.queryItems = queryItems
+        
+        if urlComponents.queryItems == nil {
+            urlComponents.queryItems = []
+        }
+        
+        urlComponents.queryItems?.append(URLQueryItem(name: "access_token", value: token))
         urlRequest.url = urlComponents.url
     }
 
     private func applyRequestBodyToken(_ token: String, to urlRequest: inout URLRequest) throws {
-        guard let httpBody = urlRequest.httpBody, var body = try JSONSerialization.jsonObject(with: httpBody, options: []) as? [String: Any] else {
+        guard let httpBody = urlRequest.httpBody, 
+                var body = try JSONSerialization.jsonObject(
+            with: httpBody,
+            options: []
+        ) as? [String: Any] else {
             throw APIError.generalToken
         }
         body["access_token"] = token
@@ -70,14 +84,20 @@ public struct URLRequestHandler: URLRequestCreator {
             return true
         }
         
-        if let request = urlRequest.url, let urlComponents = URLComponents(url: request, resolvingAgainstBaseURL: false), let queryItems = urlComponents.queryItems {
+        if let request = urlRequest.url, let urlComponents = URLComponents(
+            url: request,
+            resolvingAgainstBaseURL: false
+        ), let queryItems = urlComponents.queryItems {
             if queryItems.contains(where: { $0.name == "access_token" }) {
                 return true
             }
         }
         
         if let httpBody = urlRequest.httpBody {
-            let body = try? JSONSerialization.jsonObject(with: httpBody, options: []) as? [String: Any]
+            let body = try? JSONSerialization.jsonObject(
+                with: httpBody,
+                options: []
+            ) as? [String: Any]
             if body?["access_token"] as? String != nil {
                 return true
             }
