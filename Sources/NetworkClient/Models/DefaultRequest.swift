@@ -1,5 +1,9 @@
+//  Created by Steven Curtis
+
 public struct DefaultRequest: APIRequest {
-    public var body: HTTPBody?
+    public let body: HTTPBody?
     
-    public init() {}
+    public init(body: HTTPBody? = nil) {
+        self.body = body
+    }
 }

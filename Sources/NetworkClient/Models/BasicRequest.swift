@@ -1,3 +1,5 @@
+//  Created by Steven Curtis
+
 import Foundation
 
 public struct BasicRequest<T: Decodable>: APIRequest {

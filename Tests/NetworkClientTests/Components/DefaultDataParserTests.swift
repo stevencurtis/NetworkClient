@@ -16,9 +16,9 @@ final class DefaultDataParserTests: XCTestCase {
         super.tearDown()
     }
 
-    func testParseValidData() {
+    func testParseValidData() throws {
         let validJSONString = "{\"message\":\"Hello, World!\"}"
-        let data = validJSONString.data(using: .utf8)!
+        let data = try XCTUnwrap(validJSONString.data(using: .utf8))
         let mockRequest = MockRequest()
         
         do {

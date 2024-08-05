@@ -1,3 +1,5 @@
+//  Created by Steven Curtis
+
 import Foundation
 @testable import NetworkClient
 

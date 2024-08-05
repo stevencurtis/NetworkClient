@@ -46,6 +46,7 @@ public struct NetworkClientConfiguration {
             urlRequestCreator: URLRequestHandler(
                 headers: headers,
                 token: token
-            ))
+            )
+        )
     }
 }

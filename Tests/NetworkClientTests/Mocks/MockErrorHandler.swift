@@ -3,11 +3,18 @@
 import Foundation
 @testable import NetworkClient
 
-struct MockErrorHandler: ErrorHandlerProtocol {
-    var shouldThrowError: Bool
-    var errorToThrow: APIError?
+final class MockErrorHandler: ErrorHandlerProtocol {
+    var shouldThrowError: Bool = false
+    var errorToThrow: APIError? = nil
+    private(set) var handleResponseCallCount: Int = 0
+    private(set) var handleStatusCodeCallCount: Int = 0
+    
+    init(shouldThrowError: Bool) {
+        self.shouldThrowError = shouldThrowError
+    }
     
     func handleStatusCode(statusCode: Int) throws {
+        handleStatusCodeCallCount += 1
         if shouldThrowError {
             if let error = errorToThrow {
                 throw error
@@ -18,6 +25,7 @@ struct MockErrorHandler: ErrorHandlerProtocol {
     }
     
     func handleResponse(_ data: Data, _ response: URLResponse?) throws -> HTTPURLResponse {
+        handleResponseCallCount += 1
         if shouldThrowError {
             throw APIError.invalidResponse(data, response)
         }

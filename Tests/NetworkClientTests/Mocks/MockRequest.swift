@@ -14,7 +14,3 @@ struct MockRequest: APIRequest {
         }
     }
 }
-
-struct MockDto: Decodable, Equatable {
-    let message: String
-}

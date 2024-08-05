@@ -1,5 +1,12 @@
+//  Created by Steven Curtis
+
 @testable import NetworkClient
 import XCTest
+
+// NetworkClientTests.swift
+// This test suite covers the functionality of the MainNetworkClient class,
+// ensuring that it correctly handles various HTTP methods, success and error scenarios,
+// both for async and completion handler-based methods.
 
 final class NetworkClientTests: XCTestCase {
     private var networkClient: NetworkClient!
