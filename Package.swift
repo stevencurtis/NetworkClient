@@ -13,6 +13,9 @@ let package = Package(
         .library(
             name: "NetworkClient",
             targets: ["NetworkClient"]),
+        .library(
+              name: "NetworkClientTestUtilities",
+              targets: ["NetworkClientTestUtilities"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -24,8 +27,11 @@ let package = Package(
         .target(
             name: "NetworkClient",
             dependencies: []),
+        .target(
+            name: "NetworkClientTestUtilities",
+            dependencies: ["NetworkClient"]),
         .testTarget(
             name: "NetworkClientTests",
-            dependencies: ["NetworkClient"]),
+            dependencies: ["NetworkClient", "NetworkClientTestUtilities"]),
     ]
 )
