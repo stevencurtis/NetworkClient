@@ -16,10 +16,18 @@ public final class MainNetworkClient: NetworkClient {
         request: T
     ) async throws -> T.ResponseDataType? {
         let urlRequest = try configuration.urlRequestCreator.createURLRequest(api: api, request: request)
-        let (data, response) = try await configuration.urlSession.data(for: urlRequest)
-        let httpResponse = try configuration.errorHandler.handleResponse(data, response)
-        try configuration.errorHandler.handleStatusCode(statusCode: httpResponse.statusCode)
-        return httpResponse.statusCode == 204 ? nil : try configuration.dataParser.parseData(data, for: request)
+        do {
+            let (data, response) = try await configuration.urlSession.data(for: urlRequest)
+            let httpResponse = try configuration.errorHandler.handleResponse(data, response)
+            try configuration.errorHandler.handleStatusCode(statusCode: httpResponse.statusCode)
+            return httpResponse.statusCode == 204 ? nil : try configuration.dataParser.parseData(data, for: request)
+        }  catch URLError.notConnectedToInternet {
+            throw APIError.network(errorMessage: "No internet connection")
+        } catch URLError.timedOut {
+            throw APIError.network(errorMessage: "The request timed out")
+        } catch {
+            throw APIError.unknown
+        }
     }
     
     @discardableResult

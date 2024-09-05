@@ -2,6 +2,7 @@
 
 import Foundation
 
+// Deals with HTTP-level errors
 public protocol ErrorHandlerProtocol {
     func handleStatusCode(statusCode: Int) throws
     func handleResponse(_ data: Data, _ response: URLResponse?) throws -> HTTPURLResponse
