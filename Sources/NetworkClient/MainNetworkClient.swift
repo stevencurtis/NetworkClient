@@ -21,12 +21,16 @@ public final class MainNetworkClient: NetworkClient {
             let httpResponse = try configuration.errorHandler.handleResponse(data, response)
             try configuration.errorHandler.handleStatusCode(statusCode: httpResponse.statusCode)
             return httpResponse.statusCode == 204 ? nil : try configuration.dataParser.parseData(data, for: request)
-        }  catch URLError.notConnectedToInternet {
+        }  catch let apiError as APIError {
+            throw apiError
+        } catch let decodingError as DecodingError {
+            throw APIError.parseResponse(errorMessage: decodingError.localizedDescription)
+        } catch URLError.notConnectedToInternet {
             throw APIError.network(errorMessage: "No internet connection")
         } catch URLError.timedOut {
             throw APIError.network(errorMessage: "The request timed out")
-        } catch {
-            throw APIError.unknown
+       } catch {
+            throw error
         }
     }
     
