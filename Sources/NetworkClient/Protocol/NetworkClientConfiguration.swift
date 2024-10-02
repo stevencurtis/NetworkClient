@@ -4,7 +4,7 @@ import Foundation
 
 public struct NetworkClientConfiguration {
     public enum URLRequestCreatorConfiguration {
-        case basic(token: TokenType?, headers: [String: String])
+        case basic(token: TokenType?, headers: [String: String] = [:])
         case custom(handler: URLRequestHandler)
     }
     let urlSession: URLSession
