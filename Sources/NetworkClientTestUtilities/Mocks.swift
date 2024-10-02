@@ -25,7 +25,7 @@ public struct MockFailure: MockResult {
 
 final public class MockNetworkClient: NetworkClient {
     public var fetchResult: (any MockResult)?
-    private(set) var fetchResultCalled = false
+    private(set) public var fetchResultCalled = false
     
     public func fetch<T>(
         api: URLGenerator,
