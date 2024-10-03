@@ -11,7 +11,7 @@ public enum HTTPMethod {
 
 extension HTTPMethod: CustomStringConvertible {
     public var operation: String {
-        return self.description
+        self.description
     }
     
     public var description: String {
